@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <defs>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="1000" fill="#F6ECDC"/>
+  <ellipse cx="400" cy="330" rx="330" ry="290" fill="#FFFFFF" opacity="0.28"/>
+
+  <path d="M400 170 C 565 170 646 296 646 460 L646 1000 L154 1000 L154 460 C154 296 235 170 400 170 Z" fill="#A9744F" opacity="0.09"/>
+  <path d="M400 205 C 545 205 614 316 614 460" fill="none" stroke="#A9744F" stroke-opacity="0.24" stroke-width="1.5"/>
+
+  <ellipse cx="400" cy="812" rx="200" ry="20" fill="#33291F" opacity="0.16" filter="url(#soft)"/>
+
+  <path d="M272 566 L214 474 L262 458 L318 540 Z" fill="#D9B088"/>
+  <path d="M528 566 L586 474 L538 458 L482 540 Z" fill="#D9B088"/>
+
+  <rect x="330" y="452" width="60" height="100" rx="9" fill="#F4E8D4"/>
+  <ellipse cx="360" cy="452" rx="30" ry="8" fill="#E7D5B6"/>
+  <path d="M360 444 L360 430" stroke="#8A6B45" stroke-width="3" stroke-linecap="round"/>
+  <rect x="420" y="470" width="46" height="84" rx="7" fill="#A9744F"/>
+  <rect x="435" y="452" width="16" height="20" rx="3" fill="#7A5433"/>
+  <rect x="428" y="496" width="30" height="34" rx="3" fill="#F4E8D4"/>
+
+  <path d="M286 566 l14 -22 l14 16 l14 -20 l14 18 l14 -16 l14 20 l14 -14 l14 20 l14 -16 l14 20 l14 -18 l14 18 l14 -16" fill="none" stroke="#FAF5EA" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M272 566 L528 566 L510 792 L290 792 Z" fill="#C08A5B"/>
+  <path d="M272 566 L528 566 L510 792 L290 792 Z" fill="#7A5433" opacity="0.12"/>
+  <path d="M272 566 L528 566" stroke="#8A6B45" stroke-width="4"/>
+
+  <path d="M392 566 L382 792 M408 566 L418 792" stroke="#BF5B2D" stroke-width="14"/>
+  <path d="M400 650 c-46 -40 -96 -26 -100 4 c-3 18 34 26 100 -4 Z" fill="#BF5B2D"/>
+  <path d="M400 650 c46 -40 96 -26 100 4 c3 18 -34 26 -100 -4 Z" fill="#BF5B2D"/>
+  <circle cx="400" cy="650" r="11" fill="#A34A22"/>
+  <path d="M388 660 c-8 22 -20 34 -34 42 M412 660 c8 22 20 34 34 42" stroke="#BF5B2D" stroke-width="9" fill="none" stroke-linecap="round"/>
+
+  <g transform="translate(566 740)">
+    <circle r="26" fill="#D97742"/>
+    <circle r="20" fill="#F0A56D"/>
+    <path d="M0 -18 L0 18 M-16 -9 L16 9 M-16 9 L16 -9" stroke="#D97742" stroke-width="3"/>
+  </g>
+  <path d="M214 780 q10 -26 34 -30 M224 792 q22 -14 30 -38" stroke="#8B8B6E" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <rect x="30" y="30" width="740" height="940" fill="none" stroke="#C9B28E" stroke-width="1.5"/>
+  <path d="M30 70 L30 30 L70 30 M730 30 L770 30 L770 70 M770 930 L770 970 L730 970 M70 970 L30 970 L30 930" fill="none" stroke="#BF5B2D" stroke-width="2.5"/>
+
+  <text x="400" y="928" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="19" letter-spacing="7" fill="#8A7A66">RETAILFLOW &#183; DEMO CATALOG</text>
+  <text x="64" y="76" font-family="Georgia, serif" font-size="15" letter-spacing="4" fill="#A3927A">N&#186; 11</text>
+  <text x="736" y="76" text-anchor="end" font-family="Georgia, serif" font-size="15" letter-spacing="3" fill="#A3927A">GIFT BOX HAMPER</text>
+</svg>

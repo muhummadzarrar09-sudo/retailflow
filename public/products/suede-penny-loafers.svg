@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <defs>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="1000" fill="#F6ECDC"/>
+  <ellipse cx="400" cy="330" rx="330" ry="290" fill="#FFFFFF" opacity="0.28"/>
+
+  <path d="M400 170 C 565 170 646 296 646 460 L646 1000 L154 1000 L154 460 C154 296 235 170 400 170 Z" fill="#BF5B2D" opacity="0.07"/>
+  <path d="M400 205 C 545 205 614 316 614 460" fill="none" stroke="#BF5B2D" stroke-opacity="0.22" stroke-width="1.5"/>
+
+  <ellipse cx="400" cy="800" rx="180" ry="20" fill="#33291F" opacity="0.16" filter="url(#soft)"/>
+
+  
+    <path d="M242 622 L300 622 C 320 562 372 522 432 518 C 502 514 560 542 585 592 L592 622 Z" fill="#8A5F3A"/>
+    <path d="M398 522 C 420 556 426 586 422 620" stroke="#6E4527" stroke-width="5" fill="none"/>
+    <rect x="366" y="530" width="92" height="26" rx="13" fill="#6E4527"/>
+    <rect x="400" y="536" width="22" height="14" rx="4" fill="#E9DCC4"/>
+    <path d="M234 622 L598 622 L598 654 Q598 668 584 668 L248 668 Q234 668 234 654 Z" fill="#3B332B"/>
+    <rect x="516" y="648" width="78" height="32" rx="6" fill="#2C241D"/>
+    <path d="M258 634 H500" stroke="#5A5348" stroke-width="3" opacity="0.8"/>
+  
+
+  <rect x="30" y="30" width="740" height="940" fill="none" stroke="#C9B28E" stroke-width="1.5"/>
+  <path d="M30 70 L30 30 L70 30 M730 30 L770 30 L770 70 M770 930 L770 970 L730 970 M70 970 L30 970 L30 930" fill="none" stroke="#BF5B2D" stroke-width="2.5"/>
+
+  <text x="400" y="928" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="19" letter-spacing="7" fill="#8A7A66">RETAILFLOW &#183; DEMO CATALOG</text>
+  <text x="64" y="76" font-family="Georgia, serif" font-size="15" letter-spacing="4" fill="#A3927A">N&#186; 20</text>
+  <text x="736" y="76" text-anchor="end" font-family="Georgia, serif" font-size="15" letter-spacing="3" fill="#A3927A">SUEDE PENNY LOAFERS</text>
+</svg>
