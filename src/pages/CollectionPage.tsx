@@ -7,13 +7,9 @@ import {
   IconSearch,
   IconX,
   Reveal,
+  hexOf,
 } from '../components/ui'
-import {
-  COLOR_HEX,
-  priceOf,
-  products,
-  type Product,
-} from '../data/products'
+import { priceOf, products, type Product } from '../data/products'
 import {
   CATEGORIES,
   usePendingAnchorScroll,
@@ -29,7 +25,11 @@ type SortKey = 'newest' | 'popular' | 'price-asc' | 'price-desc'
 type CollectionView = Exclude<ShopView, 'home'>
 
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL']
-const PRICE_MAX = Math.ceil(Math.max(...products.map((p) => p.price)) / 500) * 500
+/* both bounds come from the same number the filter compares against — priceOf(),
+   i.e. the sale price. Off list price, the floor sat at Rs 1,000 while the
+   cheapest piece is Rs 950, so 24 of 25 products pinned to the minimum */
+const PRICE_MIN = Math.floor(Math.min(...products.map(priceOf)) / 250) * 250
+const PRICE_MAX = Math.ceil(Math.max(...products.map(priceOf)) / 500) * 500
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'Newest first' },
@@ -128,7 +128,7 @@ function FilterControls({ sizes, toggleSize, colors, toggleColor, maxPrice, setM
       <FilterBlock title="Price">
         <input
           type="range"
-          min={1000}
+          min={PRICE_MIN}
           max={PRICE_MAX}
           step={250}
           value={maxPrice}
@@ -137,7 +137,7 @@ function FilterControls({ sizes, toggleSize, colors, toggleColor, maxPrice, setM
           aria-label="Maximum price"
         />
         <div className="mt-1.5 flex justify-between text-[12px] font-semibold text-cocoa">
-          <span>{rs(1000)}</span>
+          <span>{rs(PRICE_MIN)}</span>
           <span className="text-terracotta-dark">
             {maxPrice >= PRICE_MAX ? 'Any price' : `Up to ${rs(maxPrice)}`}
           </span>
@@ -177,7 +177,7 @@ function FilterControls({ sizes, toggleSize, colors, toggleColor, maxPrice, setM
                   ? 'scale-110 border-espresso shadow-pop'
                   : 'border-espresso/10 hover:scale-105',
               )}
-              style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }}
+              style={{ backgroundColor: hexOf(c) }}
             />
           ))}
         </div>
@@ -298,9 +298,12 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
     setSizes([])
     setColors([])
     setMaxPrice(PRICE_MAX)
+    setSort('newest')
   }
 
-  const activeCount = sizes.length + colors.length + (maxPrice < PRICE_MAX ? 1 : 0)
+  // the query counts too, or "Clear all" shows 0 while a search is live
+  const activeCount =
+    sizes.length + colors.length + (maxPrice < PRICE_MAX ? 1 : 0) + (query.trim() ? 1 : 0)
 
   const list = useMemo(() => {
     let out = rack.filter((p) => {

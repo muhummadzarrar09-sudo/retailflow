@@ -8,30 +8,28 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { priceOf, products, type Category, type Product } from '../data/products'
+import { CATEGORY_LIST, priceOf, products, type Category, type Product } from '../data/products'
+import { currentHash, hasDom, prefersReducedMotion, scrollIntoView, scrollTo } from '../utils/env'
 
-/* ── Client-side hash routing — brand-style, one URL per page ────────
+/* ── Client-side hash routing — brand-style, one URL per view ────────
    #/shop                    → Home (campaign storefront)
    #/shop/new                → New Arrivals
    #/shop/all                → Shop All
    #/shop/sale               → The Sale
    #/shop/clothing|accessories|footwear|stationery|cosmetics|gifts
                              → category collection pages
-   #/owners                  → the RetailFlow platform page
    Plain anchor hashes (e.g. #pricing) and #product-<slug> deep links
-   are NOT routes — they never flip the active page. */
+   are not routes — they never flip the active view.
+
+   Routing is adoption-based: the server (and the first client render) always
+   start on Home, then the URL is read in an effect. That keeps hydration
+   byte-identical while still honoring shared links. */
 
 export type ShopView = 'home' | 'new' | 'sale' | 'all' | Category
-export type Route = { page: 'shop'; view: ShopView } | { page: 'owners' }
 
-export const CATEGORIES: Category[] = [
-  'Clothing',
-  'Accessories',
-  'Footwear',
-  'Stationery',
-  'Cosmetics',
-  'Gifts',
-]
+/** the racks — owned by the catalog so the nav, the tiles and the counts can
+ *  never disagree about how many there are */
+export const CATEGORIES: Category[] = [...CATEGORY_LIST]
 
 const SLUG_VIEW: Record<string, ShopView> = {
   new: 'new',
@@ -71,21 +69,14 @@ export const VIEW_LABEL: Record<ShopView, string> = {
   Gifts: 'Gifts',
 }
 
-const routeFromHash = (): Route | null => {
-  const h = window.location.hash
-  if (h.startsWith('#/owners')) return { page: 'owners' }
-  if (h === '#/' || h.startsWith('#/shop')) {
-    const seg = h.replace(/^#\//, '').split('/')[1]?.toLowerCase() ?? ''
-    return { page: 'shop', view: SLUG_VIEW[seg] ?? 'home' }
-  }
-  return null
-}
-
-const sameRoute = (a: Route, b: Route): boolean => {
-  if (a.page !== b.page) return false
-  if (a.page === 'owners' && b.page === 'owners') return true
-  if (a.page === 'shop' && b.page === 'shop') return a.view === b.view
-  return false
+/** #/shop/sale → 'sale' · anything unknown (including plain anchors) → null */
+export const viewFromHash = (hash = currentHash()): ShopView | null => {
+  if (!hash.startsWith('#/shop')) return null
+  const rest = hash.slice('#/shop'.length)
+  if (rest !== '' && rest[0] !== '/') return null // reject #/shoplift
+  const seg = rest.replace(/^\//, '').split('/')[0].toLowerCase()
+  if (!seg) return 'home'
+  return SLUG_VIEW[seg] ?? null
 }
 
 export interface CartLine {
@@ -96,6 +87,13 @@ export interface CartLine {
 }
 
 export const keyOf = (l: CartLine) => `${l.productId}::${l.size ?? ''}::${l.color ?? ''}`
+
+const MAX_QTY = 99
+
+export const clampQty = (n: unknown): number => {
+  const q = Math.floor(Number(n))
+  return Number.isFinite(q) ? Math.max(1, Math.min(MAX_QTY, q)) : 1
+}
 
 export interface ResolvedLine extends CartLine {
   key: string
@@ -114,12 +112,12 @@ interface StoreValue {
   clear: () => void
   cartOpen: boolean
   setCartOpen: (open: boolean) => void
+  hydrated: boolean
   active: Product | null
   openProduct: (p: Product) => void
   closeProduct: () => void
-  route: Route
+  view: ShopView
   goShop: (view?: ShopView, anchor?: string) => void
-  goOwners: (anchor?: string) => void
   scrollToAnchor: (id: string, smooth?: boolean) => void
   consumePendingAnchor: () => string | null
   queueSearchFocus: () => void
@@ -131,57 +129,87 @@ const StoreCtx = createContext<StoreValue | null>(null)
 
 const STORAGE_KEY = 'retailflow-inquiry-v1'
 
-const loadLines = (): CartLine[] => {
+/** Untrusted JSON → known-good lines. Anything malformed is dropped rather
+ *  than trusted, and duplicate variant lines are merged (two lines sharing a
+ *  key would collide in the basket list and make remove/setQty hit both). */
+const sanitizeLines = (raw: unknown): CartLine[] => {
+  if (!Array.isArray(raw)) return []
+  const byKey = new Map<string, CartLine>()
+  for (const item of raw) {
+    if (typeof item !== 'object' || item === null) continue
+    const { productId, size, color, qty } = item as Partial<CartLine>
+    if (typeof productId !== 'string') continue
+    if (!products.some((p) => p.id === productId)) continue
+    if (typeof qty === 'number' && !(qty > 0)) continue
+    const line: CartLine = {
+      productId,
+      size: typeof size === 'string' ? size : undefined,
+      color: typeof color === 'string' ? color : undefined,
+      qty: clampQty(qty),
+    }
+    const key = keyOf(line)
+    const seen = byKey.get(key)
+    byKey.set(key, seen ? { ...seen, qty: Math.min(MAX_QTY, seen.qty + line.qty) } : line)
+  }
+  return [...byKey.values()]
+}
+
+const readStoredLines = (): CartLine[] => {
+  if (!hasDom()) return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as CartLine[]
-    if (!Array.isArray(parsed)) return []
-    // only restore lines that still match a seeded product
-    return parsed.filter((l) => products.some((p) => p.id === l.productId) && l.qty > 0)
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? sanitizeLines(JSON.parse(raw)) : []
   } catch {
     return []
   }
 }
 
-const scrollTop = (smooth: boolean) => {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  window.scrollTo({ top: 0, behavior: smooth && !reduced ? 'smooth' : 'auto' })
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>(loadLines)
+  // both server and first client render start empty/on-Home; the browser-only
+  // truth (stored basket, shared URL) is adopted in effects below
+  const [lines, setLines] = useState<CartLine[]>([])
+  const [hydrated, setHydrated] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [active, setActive] = useState<Product | null>(null)
-  const [route, setRoute] = useState<Route>(() => routeFromHash() ?? { page: 'shop', view: 'home' })
+  const [view, setView] = useState<ShopView>('home')
   const pendingAnchor = useRef<string | null>(null)
 
+  /* restore the basket after mount — writing the empty initial state back to
+     storage would wipe a shopper's saved basket before it is ever read */
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
-    } catch {
-      /* storage unavailable — session-only cart */
-    }
-  }, [lines])
+    setLines(readStoredLines())
+    setHydrated(true)
+  }, [])
 
-  /* back/forward buttons + direct hash edits drive the active page */
   useEffect(() => {
-    const onHash = () => {
-      const r = routeFromHash()
-      if (r) setRoute((prev) => (sameRoute(prev, r) ? prev : r))
+    if (!hydrated || !hasDom()) return
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
+    } catch {
+      /* storage unavailable (private mode, quota) — session-only basket */
     }
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+  }, [lines, hydrated])
+
+  /* shared links + back/forward buttons drive the active view */
+  useEffect(() => {
+    const apply = () => {
+      const v = viewFromHash()
+      if (v) setView((prev) => (prev === v ? prev : v))
+    }
+    apply()
+    window.addEventListener('hashchange', apply)
+    return () => window.removeEventListener('hashchange', apply)
   }, [])
 
   const add = useCallback((line: CartLine) => {
+    const next: CartLine = { ...line, qty: clampQty(line.qty) }
     setLines((prev) => {
-      const key = keyOf(line)
+      const key = keyOf(next)
       const idx = prev.findIndex((l) => keyOf(l) === key)
-      if (idx === -1) return [...prev, line]
-      const next = [...prev]
-      next[idx] = { ...next[idx], qty: Math.min(99, next[idx].qty + line.qty) }
-      return next
+      if (idx === -1) return [...prev, next]
+      const out = [...prev]
+      out[idx] = { ...out[idx], qty: Math.min(MAX_QTY, out[idx].qty + next.qty) }
+      return out
     })
   }, [])
 
@@ -193,7 +221,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLines((prev) =>
       qty <= 0
         ? prev.filter((l) => keyOf(l) !== key)
-        : prev.map((l) => (keyOf(l) === key ? { ...l, qty: Math.min(99, qty) } : l)),
+        : prev.map((l) => (keyOf(l) === key ? { ...l, qty: clampQty(qty) } : l)),
     )
   }, [])
 
@@ -203,46 +231,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const closeProduct = useCallback(() => setActive(null), [])
 
   const scrollToAnchor = useCallback((id: string, smooth = true) => {
+    if (!hasDom()) return
     const el = document.getElementById(id)
-    if (!el) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({ behavior: smooth && !reduced ? 'smooth' : 'auto', block: 'start' })
+    if (el) scrollIntoView(el, { smooth })
   }, [])
 
-  const navigate = useCallback((r: Route) => {
-    setRoute((prev) => (sameRoute(prev, r) ? prev : r))
-    const hash = r.page === 'owners' ? '#/owners' : VIEW_PATH[r.view]
-    if (window.location.hash !== hash) window.location.hash = hash
+  const navigate = useCallback((v: ShopView) => {
+    setView((prev) => (prev === v ? prev : v))
+    const hash = VIEW_PATH[v]
+    if (hasDom() && window.location.hash !== hash) window.location.hash = hash
   }, [])
 
-  /* go to a storefront page — home, a collection, or a category rack —
+  /* go to a storefront view — home, a collection, or a category rack —
      optionally landing on a specific section of that page */
   const goShop = useCallback(
-    (view: ShopView = 'home', anchor?: string) => {
-      const target: Route = { page: 'shop', view }
-      if (sameRoute(route, target)) {
+    (target: ShopView = 'home', anchor?: string) => {
+      if (target === view) {
         if (anchor) scrollToAnchor(anchor)
-        else if (!anchor) scrollTop(true)
+        else scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
         return
       }
       pendingAnchor.current = anchor ?? null
       navigate(target)
     },
-    [route, navigate, scrollToAnchor],
-  )
-
-  /* go to the For-Shop-Owners page — optionally landing on a section */
-  const goOwners = useCallback(
-    (anchor?: string) => {
-      if (route.page === 'owners') {
-        if (anchor) scrollToAnchor(anchor)
-        else scrollTop(true)
-        return
-      }
-      pendingAnchor.current = anchor ?? null
-      navigate({ page: 'owners' })
-    },
-    [route, navigate, scrollToAnchor],
+    [view, navigate, scrollToAnchor],
   )
 
   const consumePendingAnchor = useCallback(() => {
@@ -252,27 +264,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /* nav search icon → lands on Shop All with the cursor already in the
-     field, even when arriving from the owners page (or re-triggered on
-     the same page — the tick forces the consumer effect to re-run) */
-  const searchFlag = useRef(false)
+     field. The flag is scoped to the navigation that asked for it, so an
+     unconsumed request can never steal focus on a later, unrelated visit. */
+  const searchFlag = useRef<number | boolean>(false)
   const [searchTick, setSearchTick] = useState(0)
   const queueSearchFocus = useCallback(() => {
-    searchFlag.current = true
+    searchFlag.current = Date.now()
     setSearchTick((t) => t + 1)
   }, [])
+  /* the flag is a request to focus the field on the page we are about to land
+     on — if that never happens (nav cancelled, link clicked twice), it must not
+     steal focus on some unrelated visit later */
   const consumeSearchFocus = useCallback(() => {
-    const q = searchFlag.current
-    searchFlag.current = false
-    return q
+    const at = searchFlag.current
+    searchFlag.current = 0
+    return typeof at === 'number' && at > 0 && Date.now() - at < 2000
   }, [])
 
   const resolved = useMemo<ResolvedLine[]>(
     () =>
       lines.flatMap((l) => {
         const product = products.find((p) => p.id === l.productId)
-        return product
-          ? [{ ...l, key: keyOf(l), product, unit: priceOf(product) }]
-          : []
+        return product ? [{ ...l, key: keyOf(l), product, unit: priceOf(product) }] : []
       }),
     [lines],
   )
@@ -289,12 +302,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clear,
       cartOpen,
       setCartOpen,
+      hydrated,
       active,
       openProduct,
       closeProduct,
-      route,
+      view,
       goShop,
-      goOwners,
       scrollToAnchor,
       consumePendingAnchor,
       queueSearchFocus,
@@ -305,8 +318,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lines,
       resolved,
       cartOpen,
+      hydrated,
       active,
-      route,
+      view,
       searchTick,
       add,
       remove,
@@ -315,7 +329,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       openProduct,
       closeProduct,
       goShop,
-      goOwners,
       scrollToAnchor,
       consumePendingAnchor,
       queueSearchFocus,
@@ -332,8 +345,8 @@ export function useStore(): StoreValue {
   return ctx
 }
 
-/* After a cross-page navigation, scroll to the requested section once
-   the target page has mounted. */
+/** After a view switch, scroll to the requested section once the target page
+ *  has mounted. */
 export function usePendingAnchorScroll() {
   const { consumePendingAnchor, scrollToAnchor } = useStore()
   useEffect(() => {

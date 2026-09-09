@@ -1,12 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
-import {
-  COLOR_HEX,
-  discountOf,
-  priceOf,
-  relatedTo,
-  type Product,
-} from '../data/products'
+import { discountOf, priceOf, relatedTo, type Product } from '../data/products'
 import { useStore } from '../store/StoreContext'
 import { cn, productMessage, rs, waLink } from '../utils/helpers'
 import { lockScroll, unlockScroll } from '../utils/scrollLock'
@@ -18,9 +12,11 @@ import {
   IconChevronDown,
   IconMinus,
   IconPlus,
+  IconArrowUpRight,
   IconX,
   Stars,
-  TintedImage,
+  Picture,
+  hexOf,
   WhatsAppIcon,
 } from './ui'
 
@@ -88,20 +84,28 @@ function ModalBody({ p }: { p: Product }) {
   const discount = discountOf(p)
   const unit = priceOf(p)
   const VIEWS = viewsFor(p)
-  /* colorway resolution: real studio photo when we have one,
-     styled duotone preview when we don't, base photo for the first color */
-  const photo = color !== p.colors[0] ? (p.colorImages?.[color] ?? null) : null
-  const tint = photo ? null : color !== p.colors[0] ? (COLOR_HEX[color] ?? null) : null
+  /* colorway resolution: real studio photo whenever we have one for the
+     selected color, else a styled duotone — except colors[0], which is the
+     color the base photo was shot in, so it stays untouched. */
+  const photo = p.colorImages?.[color] ?? null
+  const isBaseColor = color === p.colors[0]
+  const tint = photo || isBaseColor ? null : hexOf(color)
   const imgSrc = photo ?? p.image
+  const related = relatedTo(p)
 
+  // the "added" confirmation is transient — clear it on unmount so closing the
+  // modal inside the window can't pop the basket open over nothing
+  const feedback = useRef<number>()
   const addToBasket = () => {
     add({ productId: p.id, size, color, qty })
     setAdded(true)
-    window.setTimeout(() => {
+    window.clearTimeout(feedback.current)
+    feedback.current = window.setTimeout(() => {
       setAdded(false)
       setCartOpen(true)
     }, 650)
   }
+  useEffect(() => () => window.clearTimeout(feedback.current), [])
 
   return (
     <motion.div
@@ -126,11 +130,12 @@ function ModalBody({ p }: { p: Product }) {
 
       {/* gallery */}
       <div className="relative bg-sand md:h-full">
-        <TintedImage
-          src={imgSrc}
+        <Picture
+          path={imgSrc}
           alt={`${p.name} — ${VIEWS[view].label} view`}
           tint={tint}
           eager
+          sizes="(min-width:768px) 50vw, 100vw"
           className="aspect-[4/3] w-full transition-transform duration-500 md:aspect-auto md:h-full md:min-h-[34rem]"
           style={{ transform: `scale(${VIEWS[view].zoom})`, transformOrigin: VIEWS[view].origin }}
         />
@@ -151,10 +156,11 @@ function ModalBody({ p }: { p: Product }) {
                 view === i ? 'border-espresso shadow-pop' : 'border-cream/80 opacity-85 hover:opacity-100',
               )}
             >
-              <TintedImage
-                src={imgSrc}
+              <Picture
+                path={imgSrc}
                 alt=""
                 tint={tint}
+                sizes="56px"
                 className="h-full w-full"
                 style={{ transform: `scale(${v.zoom})`, transformOrigin: v.origin }}
               />
@@ -216,7 +222,7 @@ function ModalBody({ p }: { p: Product }) {
                     ? 'scale-110 border-espresso shadow-pop'
                     : 'border-espresso/10 hover:scale-105',
                 )}
-                style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }}
+                style={{ backgroundColor: hexOf(c) }}
               />
             ))}
           </div>
@@ -298,7 +304,7 @@ function ModalBody({ p }: { p: Product }) {
         </div>
 
         <a
-          href={waLink(productMessage(p, size, color, qty))}
+          href={waLink(productMessage(p, { size, color, qty }))}
           target="_blank"
           rel="noreferrer"
           className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-leaf/60 bg-leaf/10 text-sm font-bold text-leaf transition-all hover:border-leaf hover:bg-leaf hover:text-cream active:scale-[0.98]"
@@ -334,23 +340,23 @@ function ModalBody({ p }: { p: Product }) {
         </div>
 
         {/* related */}
-        {relatedTo(p).length > 0 && (
+        {related.length > 0 && (
           <div className="mt-7">
             <p className="text-[11px] font-bold uppercase tracking-mega text-taupe">
-              Pairs well with
+              More from {p.category}
             </p>
             <div className="mt-3 space-y-2">
-              {relatedTo(p).map((r) => (
+              {related.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => openProduct(r)}
                   className="flex w-full items-center gap-3 rounded-2xl border border-line bg-parchment/40 p-2.5 text-left transition-all hover:border-terracotta/40 hover:bg-claylight/40"
                 >
-                  <img
-                    src={r.image}
+                  <Picture
+                    path={r.image}
                     alt=""
-                    loading="lazy"
-                    className="h-14 w-14 rounded-xl object-cover"
+                    sizes="56px"
+                    className="h-14 w-14 rounded-xl"
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-espresso">{r.name}</span>
@@ -358,7 +364,7 @@ function ModalBody({ p }: { p: Product }) {
                       {r.category} · {rs(priceOf(r))}
                     </span>
                   </span>
-                  <IconPlus className="h-4 w-4 shrink-0 text-terracotta" />
+                  <IconArrowUpRight className="h-4 w-4 shrink-0 text-terracotta" />
                 </button>
               ))}
             </div>
@@ -373,19 +379,27 @@ export default function ProductModal() {
   const { active, closeProduct, cartOpen } = useStore()
   const restoreFocus = useRef<HTMLElement | null>(null)
 
+  // dialog manners are keyed to the product only — an unrelated overlay
+  // opening/closing must not re-lock the page or re-restore focus
   useEffect(() => {
     if (!active) return
     restoreFocus.current = document.activeElement as HTMLElement | null
     lockScroll()
-    // the inquiry basket stacks ABOVE this modal — let it own Escape first
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !cartOpen && closeProduct()
-    window.addEventListener('keydown', onKey)
     return () => {
       unlockScroll()
-      window.removeEventListener('keydown', onKey)
       restoreFocus.current?.focus?.({ preventScroll: true })
     }
-  }, [active, closeProduct, cartOpen])
+  }, [active])
+
+  // the inquiry basket stacks ABOVE this modal — let it own Escape first
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !cartOpen) closeProduct()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active, cartOpen, closeProduct])
 
   return (
     <AnimatePresence>

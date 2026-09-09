@@ -37,21 +37,6 @@ input[type='range'] {
   accent-color: #bf5b2d;
 }
 
-/* ── tasteful float for the hero mockup cluster ──────────────────── */
-@keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0) rotate(var(--r, 0deg));
-  }
-  50% {
-    transform: translateY(-11px) rotate(var(--r, 0deg));
-  }
-}
-.floaty {
-  animation: floaty var(--t, 7s) ease-in-out infinite;
-  animation-delay: var(--d, 0s);
-}
-
 @keyframes marquee {
   from {
     transform: translateX(0);
@@ -75,7 +60,7 @@ input[type='range'] {
     scroll-behavior: auto;
   }
   .animate-marquee,
-  .floaty {
+  .animate-ping {
     animation: none;
   }
 }

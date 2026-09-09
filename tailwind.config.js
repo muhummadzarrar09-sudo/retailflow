@@ -17,9 +17,7 @@ export default {
         terracotta: {
           DEFAULT: '#BF5B2D',
           dark: '#A34A22',
-          light: '#E08A5C',
         },
-        copper: '#A97850',
         ember: '#C2471B',
         leaf: '#3E7A4E',
       },
@@ -34,7 +32,6 @@ export default {
       },
       borderRadius: {
         '4xl': '2rem',
-        '5xl': '2.75rem',
       },
       letterSpacing: {
         mega: '0.22em',

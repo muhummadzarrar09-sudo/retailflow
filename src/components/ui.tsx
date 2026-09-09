@@ -1,6 +1,11 @@
-import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import type { CSSProperties, ReactNode } from 'react'
+import { COLOR_HEX } from '../data/products'
+import { IMG_BASE, PORTRAIT_MAX_WIDTH, imageFor } from '../data/images.generated'
 import { cn } from '../utils/helpers'
+
+/** the house curve — one definition, shared by every timed transition */
+export const EASE = [0.22, 1, 0.36, 1] as const
 
 /* ── Icons ─────────────────────────────────────────────────────────── */
 
@@ -200,43 +205,7 @@ export const WhatsAppIcon = ({ className }: IconProps) => (
   </svg>
 )
 
-/* ── Logo ──────────────────────────────────────────────────────────── */
-
-export function LogoMark({ className = 'h-9 w-9' }: IconProps) {
-  return (
-    <svg viewBox="0 0 40 40" className={className} aria-hidden>
-      <rect width="40" height="40" rx="11" fill="#BF5B2D" />
-      <rect x="10" y="12" width="20" height="3.4" rx="1.7" fill="#FAF5EA" />
-      <rect x="10" y="18.3" width="14" height="3.4" rx="1.7" fill="#FAF5EA" />
-      <rect x="10" y="24.6" width="8" height="3.4" rx="1.7" fill="#FAF5EA" />
-    </svg>
-  )
-}
-
-export function Logo({ dark = false, compact = false }: { dark?: boolean; compact?: boolean }) {
-  return (
-    <a href="#top" className="group flex items-center gap-2.5">
-      <LogoMark className="h-9 w-9 transition-transform duration-300 group-hover:-rotate-6" />
-      <span className="leading-none">
-        <span
-          className={cn(
-            'font-display text-[1.35rem] font-semibold tracking-tight',
-            dark ? 'text-cream' : 'text-espresso',
-          )}
-        >
-          Retail<span className="italic text-terracotta">Flow</span>
-        </span>
-        {!compact && (
-          <span className="mt-1 block text-[9px] font-semibold uppercase tracking-mega text-taupe">
-            by Zarrar.Solutions
-          </span>
-        )}
-      </span>
-    </a>
-  )
-}
-
-/* ── Demo storefront brand: Marigold & Clay ────────────────────────── */
+/* ── Demo storefront brand (the shop, not the platform) ──────────── */
 
 export function ShopMark({ className = 'h-9 w-9' }: IconProps) {
   return (
@@ -299,7 +268,11 @@ export function Stars({ value, className }: { value: number; className?: string 
     </div>
   )
   return (
-    <span className={cn('relative inline-flex shrink-0', className)} aria-label={`${value} out of 5`}>
+    <span
+      role="img"
+      className={cn('relative inline-flex shrink-0', className)}
+      aria-label={`${value} out of 5 stars`}
+    >
       {row('text-line')}
       <span
         className="absolute inset-0 overflow-hidden"
@@ -313,6 +286,14 @@ export function Stars({ value, className }: { value: number; className?: string 
 
 /* ── Badges & pills ────────────────────────────────────────────────── */
 
+export type BadgeTone = 'neutral' | 'new' | 'sale' | 'low' | 'ok' | 'dark'
+
+export interface BadgeProps {
+  tone?: BadgeTone
+  children: React.ReactNode
+  className?: string
+}
+
 export function Badge({
   tone = 'neutral',
   children,
@@ -322,7 +303,7 @@ export function Badge({
   children: ReactNode
   className?: string
 }) {
-  const tones: Record<string, string> = {
+  const tones: Record<BadgeTone, string> = {
     neutral: 'bg-cream text-charcoal shadow-sm',
     new: 'bg-espresso text-cream',
     sale: 'bg-terracotta text-cream',
@@ -343,7 +324,6 @@ export function Badge({
   )
 }
 
-/* ── Colorway image: styled duotone preview per selected color ─────── */
 
 const luminance = (hex: string) => {
   const n = parseInt(hex.replace('#', ''), 16)
@@ -353,52 +333,142 @@ const luminance = (hex: string) => {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
 }
 
-export function TintedImage({
-  src,
-  alt,
-  tint,
-  className,
-  style,
-  eager = false,
-}: {
-  src: string
+/** the swatch color for a demo color name, with a palette-safe fallback */
+export const hexOf = (color: string) => COLOR_HEX[color] ?? '#B9A88F'
+
+export interface PictureProps {
+  /** catalog path, e.g. /products/classic-linen-kurta.jpg */
+  path: string
   alt: string
-  /** hex color to render the image as a colorway duotone; null = original photo */
+  /** the viewport share this image occupies, e.g. '(max-width:767px) 46vw' */
+  sizes?: string
+  eager?: boolean
+  /** above-the-fold images: high fetch priority + eager decode */
+  hero?: boolean
+  /** focal point, e.g. '72% center' — for full-bleed crops */
+  objectPosition?: string
+  /** hex to render the photo as a colorway duotone; undefined = original photo */
   tint?: string | null
   className?: string
-  style?: React.CSSProperties
-  eager?: boolean
-}) {
-  const lum = tint ? luminance(tint) : null
-  return (
-    <div className={cn('relative overflow-hidden', className)} style={{ isolation: 'isolate', ...style }}>
+  style?: CSSProperties
+}
+
+/**
+ * Content-negotiated photo: AVIF → WebP → the original JPEG master, with srcset +
+ * sizes, a 4:5 art-directed crop on narrow viewports, an LQIP background so
+ * first paint is never white, and explicit intrinsic size so nothing shifts.
+ * `tint` layers the colorway duotone on top — kept as a blend over the real
+ * photo (not a grayscale flatten) so fabric texture survives the recolor.
+ */
+export function Picture({
+  path,
+  alt,
+  sizes = '100vw',
+  eager = false,
+  hero = false,
+  tint,
+  objectPosition,
+  className,
+  style,
+}: PictureProps) {
+  const slug = path.split('/').pop()!.replace(/\.[^.]+$/, '')
+  /** slot files are derived, never listed: <slug>-<w>.<ext> (and -portrait-) */
+  const ladder = (list: number[], ext: string, portrait = false) =>
+    list.map((w) => `${IMG_BASE}/${slug}${portrait ? '-portrait' : ''}-${w}.${ext} ${w}w`).join(', ')
+
+  const imgStyle = {
+    ...(tint ? { filter: 'saturate(0.32) contrast(1.03) brightness(1.04)' } : null),
+    ...(objectPosition ? { objectPosition } : null),
+  }
+
+  const asset = imageFor(path)
+
+  /* no optimized sibling files to negotiate with — the single-file preview
+     build, or a master the pipeline has not seen yet */
+  if (__RF_INLINE__ || !asset) {
+    return (
       <img
-        src={src}
+        src={path}
         alt={alt}
+        width={asset?.width}
+        height={asset?.height}
         draggable={false}
-        loading={eager ? 'eager' : 'lazy'}
-        className="h-full w-full object-cover"
-        style={tint ? { filter: 'grayscale(1) contrast(1.04) brightness(1.06)' } : undefined}
+        loading={hero || eager ? 'eager' : 'lazy'}
+        decoding="async"
+        className={cn('h-full w-full object-cover', className)}
+        style={imgStyle}
       />
+    )
+  }
+
+  const { width, height, w: widths, p: portraitW, lqip } = asset
+  return (
+    <div
+      className={cn('relative isolate overflow-hidden', className)}
+      style={{ backgroundImage: `url(${lqip})`, backgroundSize: 'cover', ...style }}
+    >
+      <picture>
+        {portraitW && (
+          <>
+            <source
+              media={`(max-width:${PORTRAIT_MAX_WIDTH}px)`}
+              type="image/avif"
+              srcSet={ladder(portraitW, 'avif', true)}
+              sizes={sizes}
+            />
+            <source
+              media={`(max-width:${PORTRAIT_MAX_WIDTH}px)`}
+              type="image/webp"
+              srcSet={ladder(portraitW, 'webp', true)}
+              sizes={sizes}
+            />
+          </>
+        )}
+        {widths.length > 0 && (
+          <>
+            <source type="image/avif" srcSet={ladder(widths, 'avif')} sizes={sizes} />
+            <source type="image/webp" srcSet={ladder(widths, 'webp')} sizes={sizes} />
+          </>
+        )}
+        {/* the inline src must decode anywhere: the master JPEG. Browsers that
+            support AVIF/WebP take a <source> and never fetch it. */}
+        <img
+          src={path}
+          alt={alt}
+          width={width}
+          height={height}
+          draggable={false}
+          loading={hero || eager ? 'eager' : 'lazy'}
+          decoding={hero ? 'sync' : 'async'}
+          /* React 18 has no typed prop for this — the raw attribute is what the
+             browser reads, and it is what lifts the hero above other work */
+          {...(hero ? { fetchpriority: 'high' } : null)}
+          className="h-full w-full object-cover"
+          style={imgStyle}
+        />
+      </picture>
+
       {tint && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ backgroundColor: tint, mixBlendMode: 'color', opacity: 0.82 }}
+          className="pointer-events-none absolute inset-0 mix-blend-color"
+          style={{ backgroundColor: tint, opacity: 0.7 }}
         />
       )}
-      {tint && lum !== null && lum < 0.3 && (
+      {/* pale and deep colorways each need their own corrective pass, or the
+          blend either vanishes into a white shirt or swallows a black one */}
+      {tint && luminance(tint) < 0.3 && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ backgroundColor: tint, mixBlendMode: 'multiply', opacity: 0.32 }}
+          className="pointer-events-none absolute inset-0 mix-blend-multiply"
+          style={{ backgroundColor: tint, opacity: 0.22 }}
         />
       )}
-      {tint && lum !== null && lum > 0.78 && (
+      {tint && luminance(tint) > 0.78 && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ backgroundColor: tint, mixBlendMode: 'screen', opacity: 0.22 }}
+          className="pointer-events-none absolute inset-0 mix-blend-screen"
+          style={{ backgroundColor: tint, opacity: 0.16 }}
         />
       )}
     </div>
@@ -459,6 +529,11 @@ export function SectionHeading({
 
 /* ── Scroll reveal wrapper ─────────────────────────────────────────── */
 
+/**
+ * Scroll reveal. Reduced-motion users get a plain fade (or nothing to animate)
+ * and low-end phones skip the transform entirely — this wrapper is used ~60
+ * times per page, so it is worth getting right.
+ */
 export function Reveal({
   children,
   delay = 0,
@@ -470,6 +545,8 @@ export function Reveal({
   y?: number
   className?: string
 }) {
+  const reduce = useReducedMotion()
+  if (reduce) return <div className={className}>{children}</div>
   return (
     <motion.div
       initial={{ opacity: 0, y }}

@@ -1,13 +1,24 @@
 /**
- * Builds a fully self-contained preview.html — CSS, JS, and every product
- * image inlined as data URIs — so the demo can be opened anywhere (including
- * offline viewers) without a dev server. Run after `npm run build`.
+ * Builds a fully self-contained preview.html — CSS, JS and every product image
+ * inlined as data URIs — so the demo opens anywhere without a dev server.
+ *
+ * It drives the build itself (npm run build:preview) with RF_INLINE_IMAGES=1:
+ * that switches the responsive <picture> ladder off, because a single HTML file
+ * has no sibling /products/opt/ variants to negotiate. Only the masters are
+ * inlined — the generated variants stay out of the artifact on purpose.
  */
+import { execSync } from 'node:child_process'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
 const dist = join(root, 'dist')
+
+execSync('npm run build', {
+  cwd: root,
+  stdio: 'inherit',
+  env: { ...process.env, RF_INLINE_IMAGES: '1' },
+})
 
 let html = readFileSync(join(dist, 'index.html'), 'utf8')
 

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { CATEGORIES, useStore, type ShopView } from '../store/StoreContext'
-import { cn, MSG_RETAILFLOW, MSG_SHOP, waLink } from '../utils/helpers'
+import { cn, MSG_SHOP, waLink } from '../utils/helpers'
 import { IconArrowUpRight, IconBag, ShopLogo, WhatsAppIcon } from './ui'
 
 interface FootLink {
@@ -10,10 +10,9 @@ interface FootLink {
 }
 
 export function Footer() {
-  const { goShop, goOwners } = useStore()
+  const { goShop } = useStore()
 
   const shop = (view: ShopView, anchor?: string) => () => goShop(view, anchor)
-  const owners = (anchor: string) => () => goOwners(anchor)
 
   const COLUMNS: { title: string; links: FootLink[] }[] = [
     {
@@ -37,12 +36,6 @@ export function Footer() {
     },
   ]
 
-  const PLATFORM_LINKS: FootLink[] = [
-    { label: 'For Shop Owners', run: owners('for-retailers') },
-    { label: 'Pricing', run: owners('pricing') },
-    { label: 'Add-ons', run: owners('addons') },
-    { label: 'FAQ', run: owners('faq') },
-  ]
 
   return (
     <footer className="bg-espresso text-cream">
@@ -71,7 +64,7 @@ export function Footer() {
             </a>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:col-span-7">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">
             {COLUMNS.map((col) => (
               <div key={col.title}>
                 <p className="text-[11px] font-bold uppercase tracking-mega text-clay">{col.title}</p>
@@ -95,26 +88,7 @@ export function Footer() {
                   )}
                 </ul>
               </div>
-            ))}
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-mega text-clay">
-                Powered by RetailFlow
-              </p>
-              <ul className="mt-4 space-y-2.5">
-                {PLATFORM_LINKS.map((l) => (
-                  <li key={l.label}>
-                    <button
-                      onClick={l.run}
-                      className="group flex items-center gap-1 text-sm text-cream/70 transition-colors hover:text-cream"
-                    >
-                      {l.label}
-                      <IconArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+            ))}          </div>
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-cream/10 pt-6 text-[12px] text-cream/45 sm:flex-row">
@@ -137,7 +111,7 @@ export function Footer() {
 
 export function StickyCTA() {
   const [show, setShow] = useState(false)
-  const { count, setCartOpen, route, goShop } = useStore()
+  const { count, setCartOpen, goShop } = useStore()
 
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > 480)
@@ -158,8 +132,7 @@ export function StickyCTA() {
             transition={{ type: 'spring', damping: 26, stiffness: 280 }}
             className="fixed inset-x-0 bottom-0 z-[60] border-t border-line bg-cream/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl md:hidden"
           >
-            {route.page === 'shop' ? (
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => goShop('all')}
                   className="flex h-11 flex-1 items-center justify-center rounded-full border border-espresso/20 text-[13px] font-bold text-espresso"
@@ -188,31 +161,6 @@ export function StickyCTA() {
                   WhatsApp
                 </a>
               </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <button
-                  onClick={() => goShop('home')}
-                  className="flex h-11 flex-1 items-center justify-center rounded-full border border-espresso/20 text-[13px] font-bold text-espresso"
-                >
-                  ← The Shop
-                </button>
-                <a
-                  href="#pricing"
-                  className="flex h-11 flex-1 items-center justify-center rounded-full border border-espresso/20 text-[13px] font-bold text-espresso"
-                >
-                  See Pricing
-                </a>
-                <a
-                  href={waLink(MSG_RETAILFLOW)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-leaf text-[13px] font-bold text-cream shadow-pop"
-                >
-                  <WhatsAppIcon className="h-4.5 w-4.5" />
-                  WhatsApp
-                </a>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -224,10 +172,10 @@ export function StickyCTA() {
             initial={{ opacity: 0, scale: 0.6, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.6, y: 16 }}
-            href={waLink(route.page === 'shop' ? MSG_SHOP : MSG_RETAILFLOW)}
+            href={waLink(MSG_SHOP)}
             target="_blank"
             rel="noreferrer"
-            aria-label={route.page === 'shop' ? 'Message the shop on WhatsApp' : 'Get RetailFlow on WhatsApp'}
+            aria-label="Message the shop on WhatsApp"
             className={cn(
               'fixed bottom-7 right-7 z-[60] hidden h-14 w-14 items-center justify-center rounded-full bg-leaf text-cream shadow-soft transition-transform hover:scale-105 md:flex',
             )}

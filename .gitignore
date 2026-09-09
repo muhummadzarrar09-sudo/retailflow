@@ -3,3 +3,11 @@ dist
 dist-ssr
 *.local
 .DS_Store
+
+# generated image variants — rebuilt by scripts/img-pipeline.mjs (predev/prebuild)
+public/products/opt/
+# scratch files written by the smoke tests (removed on exit, ignored just in case)
+scripts/.ssr-entry.tsx
+scripts/.ssr-out.cjs
+scripts/.dom-entry.tsx
+scripts/.dom-out.mjs

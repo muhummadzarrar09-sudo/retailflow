@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Marquee } from '../components/Sections'
+import { Marquee } from '../components/Storefront'
 import {
   CampaignHero,
   CategoryTiles,
@@ -37,8 +37,7 @@ function HomeSections() {
 
 export default function StorePage() {
   usePendingAnchorScroll()
-  const { route } = useStore()
-  const view = route.page === 'shop' ? route.view : 'home'
+  const { view } = useStore()
 
   return (
     <motion.div

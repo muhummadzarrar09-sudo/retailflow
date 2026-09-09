@@ -1,4 +1,25 @@
 export type Category = 'Clothing' | 'Accessories' | 'Footwear' | 'Stationery' | 'Cosmetics' | 'Gifts'
+
+/** the racks, in nav order — the single list behind every "shop by category" UI */
+export const CATEGORY_LIST = [
+  'Clothing',
+  'Accessories',
+  'Footwear',
+  'Stationery',
+  'Cosmetics',
+  'Gifts',
+] as const satisfies readonly Category[]
+
+/** compile-time proof the list and the union describe the same six racks: add a
+ *  category to one side and this line stops type-checking until you add it to
+ *  the other (it used to live in StoreContext, where nothing linked them) */
+type _RacksMatch = [Category] extends [typeof CATEGORY_LIST[number]]
+  ? [typeof CATEGORY_LIST[number]] extends [Category]
+    ? true
+    : never
+  : never
+const _racks: _RacksMatch = true
+void _racks
 export type StockStatus = 'in-stock' | 'low-stock'
 
 export interface Product {
@@ -554,3 +575,25 @@ export const discountOf = (p: Product) =>
 
 export const relatedTo = (p: Product, count = 3): Product[] =>
   products.filter((x) => x.id !== p.id && x.category === p.category).slice(0, count)
+/** the six racks, with the photo each one is represented by — used by the
+ *  storefront tile grid and the nav mega-menu alike (they used to keep two
+ *  copies of this list, which drifted the moment anyone added a category) */
+export const CATEGORY_TILES: { name: Category; image: string }[] = [
+  { name: 'Clothing', image: '/products/embroidered-2-piece-suit.jpg' },
+  { name: 'Accessories', image: '/products/leather-crossbody-bag.jpg' },
+  { name: 'Footwear', image: '/products/suede-penny-loafers.jpg' },
+  { name: 'Stationery', image: '/products/premium-notebook-set.jpg' },
+  { name: 'Cosmetics', image: '/products/oud-perfume-set.jpg' },
+  { name: 'Gifts', image: '/products/gift-box-hamper.jpg' },
+]
+
+/** how many products sit on each rack — one pass, typed to the union so a new
+ *  category has to be counted (and pictured) before this compiles */
+export const COUNT_BY_CATEGORY: Record<Category, number> = CATEGORY_LIST.reduce(
+  (acc, c) => ({ ...acc, [c]: products.filter((p) => p.category === c).length }),
+  {} as Record<Category, number>,
+)
+
+export const RACKS: { name: Category; image: string; count: number }[] = CATEGORY_TILES.map(
+  (t) => ({ ...t, count: COUNT_BY_CATEGORY[t.name] }),
+)

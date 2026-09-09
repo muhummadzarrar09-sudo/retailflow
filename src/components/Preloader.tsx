@@ -336,7 +336,8 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
       window.clearTimeout(t2)
       unlock()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // deliberately once: onComplete is a stable setState from App, and the
+    // curtain sequence must not restart if the parent re-renders
   }, [])
 
   if (phase === 2) return null

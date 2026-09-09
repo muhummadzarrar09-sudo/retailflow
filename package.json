@@ -3,12 +3,19 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "RetailFlow — premium catalog + WhatsApp ordering system. Demo built by Zarrar.Solutions",
+  "description": "RetailFlow \u2014 premium catalog + WhatsApp ordering system. Demo built by Zarrar.Solutions",
   "scripts": {
+    "images": "node scripts/img-pipeline.mjs",
+    "images:force": "node scripts/img-pipeline.mjs --force",
     "dev": "vite",
+    "predev": "node scripts/img-pipeline.mjs",
     "typecheck": "tsc --noEmit",
+    "ssr:check": "node scripts/ssr-smoke.mjs",
+    "smoke": "node scripts/dom-smoke.mjs",
+    "check": "tsc --noEmit && node scripts/ssr-smoke.mjs && node scripts/dom-smoke.mjs",
     "build": "tsc --noEmit && vite build",
-    "build:preview": "npm run build && node scripts/build-preview.mjs",
+    "prebuild": "node scripts/img-pipeline.mjs",
+    "build:preview": "node scripts/build-preview.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,7 +28,9 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
+    "jsdom": "^30.0.1",
     "postcss": "^8.4.47",
+    "sharp": "^0.35.4",
     "tailwindcss": "^3.4.13",
     "typescript": "~5.5.4",
     "vite": "^5.4.8"

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/StoreContext'
 import { lockScroll, unlockScroll } from '../utils/scrollLock'
 import { useFocusTrap } from '../utils/focusTrap'
-import { cartMessage, cn, rs, waLink } from '../utils/helpers'
+import { cartMessage, rs, waLink } from '../utils/helpers'
 import {
   IconArrowRight,
   IconBag,
@@ -11,6 +11,7 @@ import {
   IconPlus,
   IconTrash,
   IconX,
+  Picture,
   WhatsAppIcon,
 } from './ui'
 
@@ -124,10 +125,11 @@ export default function InquiryCart() {
                         transition={{ duration: 0.25 }}
                         className="flex gap-3.5 rounded-2xl border border-line bg-parchment/50 p-3.5"
                       >
-                        <img
-                          src={l.product.image}
+                        <Picture
+                          path={l.product.image}
                           alt=""
-                          className="h-[4.5rem] w-16 rounded-xl object-cover"
+                          sizes="64px"
+                          className="h-[4.5rem] w-16 rounded-xl"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
@@ -150,9 +152,10 @@ export default function InquiryCart() {
                           <div className="mt-2.5 flex items-center justify-between">
                             <div className="flex items-center rounded-[3px] border border-line bg-cream">
                               <button
-                                onClick={() => setQty(l.key, l.qty - 1)}
-                                className="flex h-8 w-8 items-center justify-center text-cocoa"
-                                aria-label="Decrease"
+                                // the store clamps at 1, so "−" on the last unit means remove
+                                onClick={() => (l.qty > 1 ? setQty(l.key, l.qty - 1) : remove(l.key))}
+                                className="flex h-8 w-8 items-center justify-center text-cocoa transition-colors hover:text-ember"
+                                aria-label={l.qty > 1 ? `Decrease quantity of ${l.product.name}` : `Remove ${l.product.name}`}
                               >
                                 <IconMinus className="h-3.5 w-3.5" />
                               </button>
@@ -160,7 +163,7 @@ export default function InquiryCart() {
                               <button
                                 onClick={() => setQty(l.key, l.qty + 1)}
                                 className="flex h-8 w-8 items-center justify-center text-cocoa"
-                                aria-label="Increase"
+                                aria-label={`Increase quantity of ${l.product.name}`}
                               >
                                 <IconPlus className="h-3.5 w-3.5" />
                               </button>
@@ -228,22 +231,28 @@ export default function InquiryCart() {
                 <p className="mt-1 text-[11px] text-taupe">
                   Final price, stock and delivery are confirmed by the shop on WhatsApp.
                 </p>
-                <a
-                  href={canSend ? waLink(cartMessage(name, note, resolved, total)) : undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => !canSend && e.preventDefault()}
-                  aria-disabled={!canSend}
-                  className={cn(
-                    'mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-all',
-                    canSend
-                      ? 'bg-leaf text-cream hover:brightness-110 active:scale-[0.99]'
-                      : 'cursor-not-allowed bg-taupe/30 text-cocoa/60',
-                  )}
-                >
-                  <WhatsAppIcon className="h-5 w-5" />
-                  Send Inquiry on WhatsApp
-                </a>
+                {/* an anchor with no href is not focusable and not a link, so the
+                    disabled state is a real <button> instead */}
+                {canSend ? (
+                  <a
+                    href={waLink(cartMessage(name, note, resolved, total))}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-leaf text-sm font-bold text-cream transition-all hover:brightness-110 active:scale-[0.99]"
+                  >
+                    <WhatsAppIcon className="h-5 w-5" />
+                    Send Inquiry on WhatsApp
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="mt-4 flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full bg-taupe/30 text-sm font-bold text-cocoa/60"
+                  >
+                    <WhatsAppIcon className="h-5 w-5" />
+                    Send Inquiry on WhatsApp
+                  </button>
+                )}
                 {!name.trim() && (
                   <p className="mt-2 text-center text-[11px] font-semibold text-ember">
                     Add your name above to enable sending.

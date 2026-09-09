@@ -1,6 +1,12 @@
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { useRef, useState } from 'react'
-import { priceOf, products, type Category, type Product } from '../data/products'
+import {
+  CATEGORY_TILES,
+  COUNT_BY_CATEGORY,
+  priceOf,
+  products,
+  type Product,
+} from '../data/products'
 import { useStore } from '../store/StoreContext'
 import { MSG_SHOP, rs, waLink } from '../utils/helpers'
 import {
@@ -9,64 +15,60 @@ import {
   IconChevronDown,
   IconClock,
   IconShield,
+  EASE,
+  Picture,
   Reveal,
   SectionHeading,
   WhatsAppIcon,
 } from './ui'
 import { ProductCard } from './ProductCard'
 
-const ease = [0.22, 1, 0.36, 1] as const
-
-/* ── Announcement ribbon — honest demo framing, bridges the two pages ─ */
+/* ── Announcement ribbon — honest demo framing, no upsell ───────────── */
 
 export function Ribbon() {
-  const { route, goShop, goOwners } = useStore()
-
-  if (route.page === 'owners') {
-    return (
-      <div className="bg-espresso text-cream">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-          <span className="hidden text-[10px] font-bold uppercase tracking-mega text-clay sm:inline">
-            Platform demo
-          </span>
-          <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
-            This is the platform behind the Marigold &amp; Clay demo — here's what your shop gets.
-          </p>
-          <a
-            href="#/shop"
-            onClick={(e) => {
-              e.preventDefault()
-              goShop()
-            }}
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-bold underline-offset-2 hover:underline sm:text-[12px]"
-          >
-            ← Back to the storefront
-          </a>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="bg-terracotta text-cream">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 sm:px-6 lg:px-8">
         <span className="hidden text-[10px] font-bold uppercase tracking-mega sm:inline">
           Live demo
         </span>
-        <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
+        <p className="text-center text-[11px] font-semibold sm:text-[12px]">
           This storefront is a working demo — every button, filter and inquiry is live.
         </p>
-        <a
-          href="#/owners"
-          onClick={(e) => {
-            e.preventDefault()
-            goOwners()
-          }}
-          className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-bold underline-offset-2 hover:underline sm:text-[12px]"
-        >
-          Want one for your shop?
-          <IconArrowRight className="h-3 w-3" />
-        </a>
+      </div>
+    </div>
+  )
+}
+
+/* ── Scrolling category marquee ──────────────────────────────────────
+   Two identical halves + translateX(-50%) loop; the repeat is hidden from
+   assistive tech. Reduced-motion users get a static row (see index.css). */
+
+export function Marquee() {
+  const items = [
+    'Clothing',
+    'Accessories',
+    'Footwear',
+    'Stationery',
+    'Cosmetics',
+    'Gifts',
+    'Order on WhatsApp',
+    'Cash on Delivery',
+    'New Arrivals Weekly',
+  ]
+  return (
+    <div className="overflow-hidden border-y border-line bg-parchment/70 py-3.5">
+      <div className="animate-marquee flex w-max items-center">
+        {[0, 1].map((half) => (
+          <div key={half} className="flex items-center gap-8 pr-8" aria-hidden={half === 1 || undefined}>
+            {items.map((t) => (
+              <span key={t} className="flex items-center gap-8 whitespace-nowrap">
+                <span className="text-[11px] font-bold uppercase tracking-mega text-cocoa/70">{t}</span>
+                <span className="h-1.5 w-1.5 rotate-45 bg-terracotta/50" aria-hidden />
+              </span>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -81,7 +83,7 @@ function MaskedLine({ children, delay = 0 }: { children: React.ReactNode; delay?
         className="block"
         initial={{ y: '112%' }}
         animate={{ y: '0%' }}
-        transition={{ duration: 0.9, delay, ease }}
+        transition={{ duration: 0.9, delay, ease: EASE }}
       >
         {children}
       </motion.span>
@@ -113,10 +115,13 @@ export function CampaignHero() {
         className="absolute inset-0"
         style={reduce ? undefined : { y, scale }}
       >
-        <img
-          src="/products/campaign-hero.jpg"
-          alt=""
-          className="h-full w-full object-cover object-[72%_center]"
+        <Picture
+          path="/products/campaign-hero.jpg"
+          alt="Marigold & Clay autumn campaign — an embroidered lawn suit in terracotta and clay"
+          hero
+          sizes="100vw"
+          objectPosition="72% center"
+          className="h-full w-full"
         />
       </motion.div>
       {/* scrims — text side + bottom */}
@@ -154,7 +159,7 @@ export function CampaignHero() {
         <motion.p
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.72, ease }}
+          transition={{ duration: 0.8, delay: 0.72, ease: EASE }}
           className="mt-5 max-w-md text-sm leading-relaxed text-cream/80 sm:text-base"
         >
           Embroidered lawn, soft cotton and hand-finished goods — curated in Rawalpindi.
@@ -164,7 +169,7 @@ export function CampaignHero() {
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.86, ease }}
+          transition={{ duration: 0.8, delay: 0.86, ease: EASE }}
           className="mt-8 flex flex-wrap items-center gap-3"
         >
           <button
@@ -187,15 +192,16 @@ export function CampaignHero() {
       <motion.button
         initial={{ opacity: 0, y: 26 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.85, delay: 1.05, ease }}
+        transition={{ duration: 0.85, delay: 1.05, ease: EASE }}
         onClick={() => openProduct(hero)}
         className="group absolute bottom-8 right-8 hidden w-64 items-center gap-3 overflow-hidden rounded-[4px] border-l-2 border-terracotta bg-espresso p-3.5 text-left shadow-soft transition-colors hover:bg-charcoal lg:flex"
       >
-        <img
-          src={hero.image}
+        <Picture
+          path={hero.image}
           alt={hero.name}
-          className="h-16 w-16 rounded-[2px] object-cover"
-          loading="eager"
+          eager
+          sizes="64px"
+          className="h-16 w-16 rounded-[2px]"
         />
         <span className="min-w-0 flex-1">
           <span className="block text-[9px] font-bold uppercase tracking-mega text-clay">
@@ -232,15 +238,6 @@ export function CampaignHero() {
 
 /* ── Category tiles — broken editorial grid ────────────────────────── */
 
-export const TILES: { name: Category; image: string }[] = [
-  { name: 'Clothing', image: '/products/embroidered-2-piece-suit.jpg' },
-  { name: 'Accessories', image: '/products/leather-crossbody-bag.jpg' },
-  { name: 'Footwear', image: '/products/suede-penny-loafers.jpg' },
-  { name: 'Stationery', image: '/products/premium-notebook-set.jpg' },
-  { name: 'Cosmetics', image: '/products/oud-perfume-set.jpg' },
-  { name: 'Gifts', image: '/products/gift-box-hamper.jpg' },
-]
-
 export function CategoryTiles() {
   const { goShop } = useStore()
   return (
@@ -267,8 +264,8 @@ export function CategoryTiles() {
         </Reveal>
 
         <div className="mt-12 grid grid-cols-2 gap-3 pb-2 sm:gap-5 sm:pb-16 lg:grid-cols-3">
-          {TILES.map((t, i) => {
-            const count = products.filter((p) => p.category === t.name).length
+          {CATEGORY_TILES.map((t, i) => {
+            const count = COUNT_BY_CATEGORY[t.name]
             const lift = i % 3 === 1 ? 'lg:translate-y-12' : i % 3 === 2 ? 'lg:translate-y-6' : ''
             return (
               <Reveal key={t.name} delay={i * 0.05} className={lift}>
@@ -276,11 +273,11 @@ export function CategoryTiles() {
                   onClick={() => goShop(t.name)}
                   className="group relative block w-full overflow-hidden rounded-3xl bg-sand text-left"
                 >
-                  <img
-                    src={t.image}
+                  <Picture
+                    path={t.image}
                     alt={t.name}
-                    loading="lazy"
-                    className="aspect-[3/4] w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.06]"
+                    sizes="(max-width:640px) 46vw, (max-width:1024px) 44vw, 32vw"
+                    className="aspect-[3/4] w-full transition-transform duration-[1.2s] ease-out group-hover:scale-[1.06]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-espresso/70 via-transparent to-transparent opacity-90 transition-opacity duration-500 group-hover:opacity-100" />
                   <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-3">
@@ -309,7 +306,12 @@ export function CategoryTiles() {
 export function NewArrivalsRail() {
   const { goShop } = useStore()
   const railRef = useRef<HTMLDivElement>(null)
-  const fresh = products.filter((p) => p.isNew)
+  /* "New arrivals" = newest first, not whoever carries the flag — sorted so the
+     rail and the New In rack agree on what "new" means */
+  const fresh = products
+    .filter((p) => p.isNew)
+    .sort((a, b) => b.addedAt - a.addedAt)
+    .slice(0, 8)
   const nudge = (dir: number) =>
     railRef.current?.scrollBy({ left: dir * 340, behavior: 'smooth' })
 
@@ -358,7 +360,7 @@ export function NewArrivalsRail() {
         >
           {fresh.map((p, i) => (
             <div key={p.id} className="w-[15.5rem] shrink-0 snap-start sm:w-[16.5rem]">
-              <ProductCard p={p} index={i} />
+              <ProductCard p={p} index={i} sizes="(max-width:640px) 78vw, 264px" />
             </div>
           ))}
           {/* end card — view all */}
@@ -387,11 +389,11 @@ export function CraftSplit() {
         <Reveal>
           <div className="relative">
             <div className="overflow-hidden rounded-4xl">
-              <img
-                src="/products/campaign-craft.jpg"
+              <Picture
+                path="/products/campaign-craft.jpg"
                 alt="Hands embroidering golden zari thread onto terracotta fabric"
-                loading="lazy"
-                className="aspect-[4/5] w-full object-cover"
+                sizes="(max-width:1023px) 100vw, 46vw"
+                className="aspect-[4/5] w-full"
               />
             </div>
             <div className="absolute -bottom-5 left-6 border-l-2 border-terracotta bg-espresso px-4 py-3 shadow-card">
@@ -478,10 +480,11 @@ export function EditorialBanner() {
       className="relative overflow-hidden border-b border-line bg-espresso"
     >
       <motion.div aria-hidden className="absolute -inset-y-[10%] inset-x-0" style={reduce ? undefined : { y }}>
-        <img
-          src="/products/campaign-sale.jpg"
+        <Picture
+          path="/products/campaign-sale.jpg"
           alt=""
-          className="h-full w-full object-cover object-center"
+          sizes="100vw"
+          className="h-full w-full"
         />
       </motion.div>
       <div
@@ -534,11 +537,11 @@ export function TextureBreak() {
   return (
     <section className="relative overflow-hidden border-b border-line">
       <div aria-hidden className="absolute inset-0">
-        <img
-          src="/products/campaign-flatlay.jpg"
+        <Picture
+          path="/products/campaign-flatlay.jpg"
           alt=""
-          loading="lazy"
-          className="h-full w-full object-cover"
+          sizes="100vw"
+          className="h-full w-full"
         />
         <div className="absolute inset-0 bg-espresso/55" />
       </div>
@@ -581,11 +584,11 @@ function LookCard({
         tall ? 'w-64 sm:w-72' : 'w-56 sm:w-64'
       }`}
     >
-      <img
-        src={image}
+      <Picture
+        path={image}
         alt={label}
-        loading="lazy"
-        className="aspect-[3/4] w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.05]"
+        sizes={tall ? '(max-width:640px) 82vw, 42vw' : '(max-width:640px) 78vw, 340px'}
+        className="aspect-[3/4] w-full transition-transform duration-[1.2s] ease-out group-hover:scale-[1.05]"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-espresso/65 via-transparent to-transparent" />
       <div className="absolute inset-x-4 bottom-4">
