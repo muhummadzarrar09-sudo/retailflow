@@ -14,7 +14,7 @@ import {
 import { usePendingAnchorScroll, useStore } from '../store/StoreContext'
 import CollectionPage from './CollectionPage'
 
-/* ── Page 1 · The Shop — Marigold & Clay, a working demo storefront ──
+/* ── Page · The Shop — Marigold & Clay, the storefront ───────────────
    'home' renders the campaign storefront; every other view renders a
    full collection page (New / Sale / Shop All / each category rack). */
 
@@ -37,8 +37,7 @@ function HomeSections() {
 
 export default function StorePage() {
   usePendingAnchorScroll()
-  const { route } = useStore()
-  const view = route.page === 'shop' ? route.view : 'home'
+  const { view } = useStore()
 
   return (
     <motion.div

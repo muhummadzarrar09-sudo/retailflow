@@ -17,56 +17,18 @@ import { ProductCard } from './ProductCard'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
-/* ── Announcement ribbon — honest demo framing, bridges the two pages ─ */
+/* ── Announcement ribbon — honest demo framing for the storefront ──── */
 
 export function Ribbon() {
-  const { route, goShop, goOwners } = useStore()
-
-  if (route.page === 'owners') {
-    return (
-      <div className="bg-espresso text-cream">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-          <span className="hidden text-[10px] font-bold uppercase tracking-mega text-clay sm:inline">
-            Platform demo
-          </span>
-          <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
-            This is the platform behind the Marigold &amp; Clay demo — here's what your shop gets.
-          </p>
-          <a
-            href="#/shop"
-            onClick={(e) => {
-              e.preventDefault()
-              goShop()
-            }}
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-bold underline-offset-2 hover:underline sm:text-[12px]"
-          >
-            ← Back to the storefront
-          </a>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="bg-terracotta text-cream">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
         <span className="hidden text-[10px] font-bold uppercase tracking-mega sm:inline">
-          Live demo
+          Live storefront
         </span>
         <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
-          This storefront is a working demo — every button, filter and inquiry is live.
+          Every button, filter and inquiry is live — browse, then order in one clean WhatsApp message.
         </p>
-        <a
-          href="#/owners"
-          onClick={(e) => {
-            e.preventDefault()
-            goOwners()
-          }}
-          className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-bold underline-offset-2 hover:underline sm:text-[12px]"
-        >
-          Want one for your shop?
-          <IconArrowRight className="h-3 w-3" />
-        </a>
       </div>
     </div>
   )

@@ -1,12 +1,25 @@
 import { motion } from 'framer-motion'
+import { forwardRef } from 'react'
 import { COLOR_HEX, discountOf, priceOf, type Product } from '../data/products'
 import { useStore } from '../store/StoreContext'
 import { productMessage, rs, waLink } from '../utils/helpers'
 import { Badge, IconEye, IconPlus, Stars, WhatsAppIcon } from './ui'
 
-/* ── Product card — shared by collection pages, rails and lookbooks ── */
+/* ── Product card — shared by collection pages, rails and lookbooks ──
+   Must forward a ref: the collection grid renders these inside
+   <AnimatePresence mode="popLayout">, which needs to reach the card's DOM
+   node to measure & "pop" cards out when one is filtered/sorted away. Without
+   the forwarded ref framer logs a warning and exits collapse instead. */
 
-export function ProductCard({ p, index }: { p: Product; index: number }) {
+export interface ProductCardProps {
+  p: Product
+  index: number
+}
+
+export const ProductCard = forwardRef<HTMLElement, ProductCardProps>(function ProductCard(
+  { p, index },
+  ref,
+) {
   const { openProduct, add, setCartOpen } = useStore()
   const discount = discountOf(p)
 
@@ -23,6 +36,7 @@ export function ProductCard({ p, index }: { p: Product; index: number }) {
 
   return (
     <motion.article
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -114,4 +128,4 @@ export function ProductCard({ p, index }: { p: Product; index: number }) {
       </div>
     </motion.article>
   )
-}
+})

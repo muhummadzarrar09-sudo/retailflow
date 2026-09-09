@@ -6,7 +6,6 @@ import Preloader from './components/Preloader'
 import ProductModal from './components/ProductModal'
 import { Ribbon } from './components/Storefront'
 import { Footer, StickyCTA } from './components/Footer'
-import OwnersPage from './pages/OwnersPage'
 import StorePage from './pages/StorePage'
 import { useStore, VIEW_LABEL } from './store/StoreContext'
 import { products } from './data/products'
@@ -16,7 +15,7 @@ export default function App() {
   // own entrance choreography plays as the storefront is revealed
   const [loaded, setLoaded] = useState(false)
   const reduce = useReducedMotion()
-  const { route, openProduct } = useStore()
+  const { view, openProduct } = useStore()
 
   // deep links shared on WhatsApp: #product-<slug> opens straight into
   // that product (it waits under the curtains and greets after the reveal)
@@ -29,24 +28,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // every page switch starts at the top, with a title + description to match
+  // every view switch starts at the top, with a title + description to match
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
     const title =
-      route.page === 'owners'
-        ? 'RetailFlow for Shop Owners · Zarrar.Solutions'
-        : route.view === 'home'
-          ? 'Marigold & Clay — Curated General Store · RetailFlow Demo'
-          : `${VIEW_LABEL[route.view]} — Marigold & Clay · RetailFlow Demo`
+      view === 'home'
+        ? 'Marigold & Clay — Curated General Store'
+        : `${VIEW_LABEL[view]} — Marigold & Clay`
     const description =
-      route.page === 'owners'
-        ? 'RetailFlow turns local shops into premium online catalogs with WhatsApp ordering — packages, admin demo and process by Zarrar.Solutions.'
-        : 'Marigold & Clay is a working demo storefront: curated clothing, accessories, stationery and gifts — browse, filter and order in one WhatsApp message.'
+      'Marigold & Clay is a working storefront demo: curated clothing, accessories, stationery and gifts — browse, filter and order in one WhatsApp message.'
     document.title = title
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute('content', description)
-  }, [route])
+  }, [view])
 
   return (
     <div className="min-h-screen">
@@ -63,17 +58,13 @@ export default function App() {
         >
           <main>
             <AnimatePresence mode="wait" initial={false}>
-              {route.page === 'shop' ? (
-                <StorePage key={`shop-${route.view}`} />
-              ) : (
-                <OwnersPage key="owners" />
-              )}
+              <StorePage key={`shop-${view}`} />
             </AnimatePresence>
           </main>
           <Footer />
         </motion.div>
       )}
-      {/* overlays — work on both pages */}
+      {/* overlays */}
       <InquiryCart />
       <ProductModal />
       <StickyCTA />

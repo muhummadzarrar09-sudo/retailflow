@@ -200,42 +200,6 @@ export const WhatsAppIcon = ({ className }: IconProps) => (
   </svg>
 )
 
-/* ── Logo ──────────────────────────────────────────────────────────── */
-
-export function LogoMark({ className = 'h-9 w-9' }: IconProps) {
-  return (
-    <svg viewBox="0 0 40 40" className={className} aria-hidden>
-      <rect width="40" height="40" rx="11" fill="#BF5B2D" />
-      <rect x="10" y="12" width="20" height="3.4" rx="1.7" fill="#FAF5EA" />
-      <rect x="10" y="18.3" width="14" height="3.4" rx="1.7" fill="#FAF5EA" />
-      <rect x="10" y="24.6" width="8" height="3.4" rx="1.7" fill="#FAF5EA" />
-    </svg>
-  )
-}
-
-export function Logo({ dark = false, compact = false }: { dark?: boolean; compact?: boolean }) {
-  return (
-    <a href="#top" className="group flex items-center gap-2.5">
-      <LogoMark className="h-9 w-9 transition-transform duration-300 group-hover:-rotate-6" />
-      <span className="leading-none">
-        <span
-          className={cn(
-            'font-display text-[1.35rem] font-semibold tracking-tight',
-            dark ? 'text-cream' : 'text-espresso',
-          )}
-        >
-          Retail<span className="italic text-terracotta">Flow</span>
-        </span>
-        {!compact && (
-          <span className="mt-1 block text-[9px] font-semibold uppercase tracking-mega text-taupe">
-            by Zarrar.Solutions
-          </span>
-        )}
-      </span>
-    </a>
-  )
-}
-
 /* ── Demo storefront brand: Marigold & Clay ────────────────────────── */
 
 export function ShopMark({ className = 'h-9 w-9' }: IconProps) {

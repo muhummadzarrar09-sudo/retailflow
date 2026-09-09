@@ -7,7 +7,7 @@ import {
   VIEW_LABEL,
   type ShopView,
 } from '../store/StoreContext'
-import { cn, MSG_RETAILFLOW, MSG_SHOP, waLink } from '../utils/helpers'
+import { cn, MSG_SHOP, waLink } from '../utils/helpers'
 import { lockScroll, unlockScroll } from '../utils/scrollLock'
 import { useFocusTrap } from '../utils/focusTrap'
 import {
@@ -31,21 +31,13 @@ const MEGA_TILES: { name: Category; image: string }[] = [
   { name: 'Gifts', image: '/products/gift-box-hamper.jpg' },
 ]
 
-const OWNER_LINKS = [
-  { label: 'The Platform', anchor: 'for-retailers' },
-  { label: 'System', anchor: 'system' },
-  { label: 'Admin Demo', anchor: 'admin' },
-  { label: 'Pricing', anchor: 'pricing' },
-  { label: 'FAQ', anchor: 'faq' },
-]
-
 /* brand mega-menu — hover panel: category rack cards + campaign strip,
    each card deep-links to its own collection page */
 function MegaMenu() {
-  const { goShop, route } = useStore()
+  const { goShop, view } = useStore()
   const [open, setOpen] = useState(false)
   const timer = useRef<number>()
-  const activeView = route.page === 'shop' ? route.view : null
+  const activeView = view
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -56,9 +48,9 @@ function MegaMenu() {
   const leave = () => {
     timer.current = window.setTimeout(() => setOpen(false), 140)
   }
-  const go = (view: ShopView) => {
+  const go = (target: ShopView) => {
     setOpen(false)
-    goShop(view)
+    goShop(target)
   }
 
   return (
@@ -168,8 +160,7 @@ export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   useFocusTrap(menuRef, menuOpen)
-  const { count, setCartOpen, route, goShop, goOwners, queueSearchFocus } = useStore()
-  const onShop = route.page === 'shop'
+  const { count, setCartOpen, view, goShop, queueSearchFocus } = useStore()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -198,8 +189,6 @@ export default function Nav() {
     goShop('all')
   }
 
-  const shopView = onShop ? route.view : null
-
   return (
     <>
       <header
@@ -219,114 +208,76 @@ export default function Nav() {
             }}
           />
 
-          {/* desktop links — scoped to the active page */}
-          {onShop ? (
-            <nav className="hidden items-center gap-7 lg:flex" aria-label="Shop">
-              <a
-                href="#/shop/new"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goShop('new')
-                }}
-                className={cn(
-                  'text-[13px] font-semibold transition-colors hover:text-espresso',
-                  shopView === 'new' ? 'text-espresso underline underline-offset-8' : 'text-cocoa',
-                )}
-              >
-                New In
-              </a>
-              <MegaMenu />
-              <a
-                href="#/shop/sale"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goShop('sale')
-                }}
-                className={cn(
-                  'text-[13px] font-semibold transition-colors hover:text-ember',
-                  shopView === 'sale'
-                    ? 'text-ember underline underline-offset-8'
-                    : 'text-terracotta-dark',
-                )}
-              >
-                Sale
-              </a>
-              <a
-                href="#/owners"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goOwners()
-                }}
-                className="flex items-center gap-1.5 rounded-[3px] border border-espresso/20 px-4 py-2 text-[13px] font-bold uppercase tracking-[0.08em] text-espresso transition-all hover:border-terracotta/50 hover:bg-claylight/50 hover:text-terracotta-dark"
-              >
-                Want one for your shop?
-              </a>
-            </nav>
-          ) : (
-            <nav className="hidden items-center gap-7 lg:flex" aria-label="Platform">
-              <a
-                href="#/shop"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goShop('home')
-                }}
-                className="text-[13px] font-bold text-taupe transition-colors hover:text-espresso"
-              >
-                ← Back to the Shop
-              </a>
-              {OWNER_LINKS.map((l) => (
-                <a
-                  key={l.label}
-                  href={`#${l.anchor}`}
-                  className="text-[13px] font-semibold text-cocoa transition-colors hover:text-espresso"
-                >
-                  {l.label}
-                </a>
-              ))}
-            </nav>
-          )}
+          {/* desktop links */}
+          <nav className="hidden items-center gap-7 lg:flex" aria-label="Shop">
+            <a
+              href="#/shop/new"
+              onClick={(e) => {
+                e.preventDefault()
+                goShop('new')
+              }}
+              className={cn(
+                'text-[13px] font-semibold transition-colors hover:text-espresso',
+                view === 'new' ? 'text-espresso underline underline-offset-8' : 'text-cocoa',
+              )}
+            >
+              New In
+            </a>
+            <MegaMenu />
+            <a
+              href="#/shop/sale"
+              onClick={(e) => {
+                e.preventDefault()
+                goShop('sale')
+              }}
+              className={cn(
+                'text-[13px] font-semibold transition-colors hover:text-ember',
+                view === 'sale'
+                  ? 'text-ember underline underline-offset-8'
+                  : 'text-terracotta-dark',
+              )}
+            >
+              Sale
+            </a>
+          </nav>
 
           <div className="flex items-center gap-2.5">
-            {onShop && (
-              <button
-                onClick={openSearch}
-                className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-espresso/15 bg-cream text-espresso transition-all hover:border-espresso/30 hover:bg-parchment"
-                aria-label="Search the catalog"
-              >
-                <IconSearch className="h-4.5 w-4.5" />
-              </button>
-            )}
-            {onShop && (
-              <button
-                onClick={() => setCartOpen(true)}
-                className="group relative flex h-10 items-center gap-2 rounded-[4px] border border-espresso/15 bg-cream px-4 text-[13px] font-semibold text-espresso transition-all hover:border-espresso/30 hover:bg-parchment"
-                aria-label="Open inquiry basket"
-              >
-                <IconBag className="h-4.5 w-4.5" />
-                <span className="hidden sm:inline">Basket</span>
-                <AnimatePresence>
-                  {count > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0 }}
-                      className="flex h-5 min-w-5 items-center justify-center rounded-[2px] bg-terracotta px-1 text-[11px] font-bold text-cream"
-                    >
-                      {count}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </button>
-            )}
+            <button
+              onClick={openSearch}
+              className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-espresso/15 bg-cream text-espresso transition-all hover:border-espresso/30 hover:bg-parchment"
+              aria-label="Search the catalog"
+            >
+              <IconSearch className="h-4.5 w-4.5" />
+            </button>
+            <button
+              onClick={() => setCartOpen(true)}
+              className="group relative flex h-10 items-center gap-2 rounded-[4px] border border-espresso/15 bg-cream px-4 text-[13px] font-semibold text-espresso transition-all hover:border-espresso/30 hover:bg-parchment"
+              aria-label="Open inquiry basket"
+            >
+              <IconBag className="h-4.5 w-4.5" />
+              <span className="hidden sm:inline">Basket</span>
+              <AnimatePresence>
+                {count > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="flex h-5 min-w-5 items-center justify-center rounded-[2px] bg-terracotta px-1 text-[11px] font-bold text-cream"
+                  >
+                    {count}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
 
             <a
-              href={waLink(onShop ? MSG_SHOP : MSG_RETAILFLOW)}
+              href={waLink(MSG_SHOP)}
               target="_blank"
               rel="noreferrer"
               className="hidden h-10 items-center gap-2 rounded-full bg-espresso px-4.5 text-[13px] font-semibold text-cream transition-all hover:bg-charcoal hover:shadow-pop md:flex"
             >
               <WhatsAppIcon className="h-4 w-4" />
-              {onShop ? 'Message the Shop' : 'Get RetailFlow'}
+              Message the Shop
             </a>
 
             <button
@@ -373,130 +324,81 @@ export default function Nav() {
               </button>
             </div>
 
-            {onShop ? (
-              <nav
-                className="flex flex-1 flex-col justify-center gap-1 overflow-y-auto px-8 py-4"
-                aria-label="Mobile"
+            <nav
+              className="flex flex-1 flex-col justify-center gap-1 overflow-y-auto px-8 py-4"
+              aria-label="Mobile"
+            >
+              {(['new', 'all', 'sale'] as ShopView[]).map((v, i) => (
+                <motion.a
+                  key={v}
+                  href={`#/shop/${v}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    goShop(v)
+                    setMenuOpen(false)
+                  }}
+                  initial={{ opacity: 0, x: -18 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.06 + i * 0.05, duration: 0.4 }}
+                  aria-current={view === v ? 'page' : undefined}
+                  className={cn(
+                    'border-b border-cream/10 py-3.5 font-display text-3xl font-medium tracking-tight',
+                    v === 'sale' && 'italic text-clay',
+                    view === v && 'text-claylight',
+                  )}
+                >
+                  {v === 'all' ? 'Shop All' : VIEW_LABEL[v]}
+                </motion.a>
+              ))}
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.24, duration: 0.4 }}
+                className="mt-5 text-[10px] font-bold uppercase tracking-mega text-cream/40"
               >
-                {(['new', 'all', 'sale'] as ShopView[]).map((v, i) => (
+                Categories
+              </motion.p>
+              <div className="mt-1 grid grid-cols-2 gap-x-6">
+                {CATEGORIES.map((c, i) => (
                   <motion.a
-                    key={v}
-                    href={`#/shop/${v}`}
+                    key={c}
+                    href={`#/shop/${c.toLowerCase()}`}
                     onClick={(e) => {
                       e.preventDefault()
-                      goShop(v)
+                      goShop(c)
                       setMenuOpen(false)
                     }}
-                    initial={{ opacity: 0, x: -18 }}
+                    initial={{ opacity: 0, x: -14 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.06 + i * 0.05, duration: 0.4 }}
-                    aria-current={shopView === v ? 'page' : undefined}
+                    transition={{ delay: 0.26 + i * 0.04, duration: 0.35 }}
+                    aria-current={view === c ? 'page' : undefined}
                     className={cn(
-                      'border-b border-cream/10 py-3.5 font-display text-3xl font-medium tracking-tight',
-                      v === 'sale' && 'italic text-clay',
-                      shopView === v && 'text-claylight',
+                      'border-b border-cream/10 py-3 text-[15px] font-semibold text-cream/80 transition-colors hover:text-cream',
+                      view === c && 'text-claylight',
                     )}
                   >
-                    {v === 'all' ? 'Shop All' : VIEW_LABEL[v]}
+                    {c}
+                    <span className="ml-2 text-[11px] font-semibold text-cream/35">
+                      {products.filter((p) => p.category === c).length}
+                    </span>
                   </motion.a>
                 ))}
-
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.24, duration: 0.4 }}
-                  className="mt-5 text-[10px] font-bold uppercase tracking-mega text-cream/40"
-                >
-                  Categories
-                </motion.p>
-                <div className="mt-1 grid grid-cols-2 gap-x-6">
-                  {CATEGORIES.map((c, i) => (
-                    <motion.a
-                      key={c}
-                      href={`#/shop/${c.toLowerCase()}`}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        goShop(c)
-                        setMenuOpen(false)
-                      }}
-                      initial={{ opacity: 0, x: -14 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.26 + i * 0.04, duration: 0.35 }}
-                      aria-current={shopView === c ? 'page' : undefined}
-                      className={cn(
-                        'border-b border-cream/10 py-3 text-[15px] font-semibold text-cream/80 transition-colors hover:text-cream',
-                        shopView === c && 'text-claylight',
-                      )}
-                    >
-                      {c}
-                      <span className="ml-2 text-[11px] font-semibold text-cream/35">
-                        {products.filter((p) => p.category === c).length}
-                      </span>
-                    </motion.a>
-                  ))}
-                </div>
-
-                <motion.a
-                  href="#/owners"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    goOwners()
-                    setMenuOpen(false)
-                  }}
-                  initial={{ opacity: 0, x: -18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5, duration: 0.4 }}
-                  className="mt-5 py-3 font-display text-2xl font-medium italic tracking-tight text-clay"
-                >
-                  For Shop Owners →
-                </motion.a>
-              </nav>
-            ) : (
-              <nav className="flex flex-1 flex-col justify-center gap-2 overflow-y-auto px-8" aria-label="Mobile">
-                {OWNER_LINKS.map((l, i) => (
-                  <motion.a
-                    key={l.label}
-                    href={`#${l.anchor}`}
-                    onClick={() => setMenuOpen(false)}
-                    initial={{ opacity: 0, x: -18 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.08 + i * 0.06, duration: 0.4 }}
-                    className="border-b border-cream/10 py-4 font-display text-3xl font-medium tracking-tight"
-                  >
-                    {l.label}
-                  </motion.a>
-                ))}
-                <motion.a
-                  href="#/shop"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    goShop('home')
-                    setMenuOpen(false)
-                  }}
-                  initial={{ opacity: 0, x: -18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.42, duration: 0.4 }}
-                  className="border-b border-cream/10 py-4 font-display text-2xl font-medium italic tracking-tight text-clay"
-                >
-                  ← Back to the Shop
-                </motion.a>
-              </nav>
-            )}
+              </div>
+            </nav>
 
             <div className="p-8">
               <a
-                href={waLink(onShop ? MSG_SHOP : MSG_RETAILFLOW)}
+                href={waLink(MSG_SHOP)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex h-13 items-center justify-center gap-2.5 rounded-full bg-leaf py-3.5 font-semibold"
               >
                 <WhatsAppIcon className="h-5 w-5" />
-                {onShop ? 'Message the Shop' : 'Get RetailFlow'}
+                Message the Shop
               </a>
               <p className="mt-4 text-center text-[11px] uppercase tracking-mega text-cream/40">
-                {onShop
-                  ? 'Marigold & Clay — demo storefront by RetailFlow'
-                  : 'RetailFlow by Zarrar.Solutions — platform demo'}
+                Marigold & Clay — curated general store
               </p>
             </div>
           </motion.div>

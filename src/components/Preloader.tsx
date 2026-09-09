@@ -312,7 +312,7 @@ function Curtain({
 
 export default function Preloader({ onComplete }: { onComplete: () => void }) {
   const reduce = useReducedMotion()
-  const [phase, setPhase] = useState(0) // 0 stitched brand holds, 1 curtains part, 2 gone
+  const [phase, setPhase] = useState(0) // 0 stitched hold · 1 curtains part · 2 silk dissolves · 3 gone
 
   useEffect(() => {
     // shares the app-wide refcounted lock — stacked overlays (deep-linked
@@ -327,23 +327,34 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
     const partAt = reduce ? 700 : PART_MS
     const t1 = window.setTimeout(() => {
       setPhase(1)
-      onComplete()
+      onComplete() // hero mounts beneath the parting silk
       unlock() // store is interactive beneath the parting silk
     }, partAt)
-    const t2 = window.setTimeout(() => setPhase(2), partAt + (reduce ? 600 : 1450))
+    // after the panels sweep clear, dissolve the opaque silk backdrop so the
+    // already-settled storefront crossfades in rather than popping in hard
+    const t2 = window.setTimeout(() => setPhase(2), partAt + (reduce ? 420 : 1350))
+    const t3 = window.setTimeout(
+      () => setPhase(3),
+      partAt + (reduce ? 420 : 1350) + (reduce ? 360 : 700),
+    )
     return () => {
       window.clearTimeout(t1)
       window.clearTimeout(t2)
+      window.clearTimeout(t3)
       unlock()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (phase === 2) return null
+  if (phase === 3) return null
+
+  const dissolve = phase === 2
 
   return (
-    <div
+    <motion.div
       className="fixed inset-0 z-[200]"
+      animate={{ opacity: dissolve ? 0 : 1 }}
+      transition={{ duration: reduce ? 0.34 : 0.7, ease: [0.4, 0, 0.2, 1] }}
       style={{
         pointerEvents: phase >= 1 ? 'none' : 'auto',
         // silk fallback tone — seals any sub-pixel hairline between the panels
@@ -397,8 +408,32 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
         initial={{ opacity: 0 }}
         transition={{ duration: 0.4, delay: phase >= 1 ? 0 : 2.45 }}
       >
-        A RetailFlow Demo Storefront
+        Browse the catalog · Order on WhatsApp
       </motion.p>
-    </div>
+
+      {/* cinematic edge vignette — a stage-light focus pulls in around the
+          embroidery while the silk is closed, then breathes out as the
+          curtains part and the storefront dissolves into view */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-20"
+        style={{
+          background:
+            'radial-gradient(125% 96% at 50% 44%, rgba(0,0,0,0) 52%, rgba(28,7,2,0.04) 70%, rgba(28,7,2,0.5) 100%)',
+        }}
+        animate={
+          phase >= 1
+            ? { opacity: 0 }
+            : reduce
+              ? { opacity: 0.55 }
+              : { opacity: [0.55, 0.85, 0.55] }
+        }
+        transition={
+          phase >= 1
+            ? { duration: reduce ? 0.35 : 1.15, ease: [0.22, 1, 0.36, 1] }
+            : { repeat: Infinity, duration: 3.6, ease: 'easeInOut' }
+        }
+      />
+    </motion.div>
   )
 }
