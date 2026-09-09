@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import InquiryCart from './components/InquiryCart'
 import Nav from './components/Nav'
 import Preloader from './components/Preloader'
-import ProductModal from './components/ProductModal'
 import { Ribbon } from './components/Storefront'
 import { Footer, StickyCTA } from './components/Footer'
 import StorePage from './pages/StorePage'
@@ -15,10 +14,9 @@ export default function App() {
   // own entrance choreography plays as the storefront is revealed
   const [loaded, setLoaded] = useState(false)
   const reduce = useReducedMotion()
-  const { view, openProduct } = useStore()
+  const { route, view, product, openProduct } = useStore()
 
-  // deep links shared on WhatsApp: #product-<slug> opens straight into
-  // that product (it waits under the curtains and greets after the reveal)
+  // legacy deep links shared on WhatsApp: #product-<slug> → full product page
   useEffect(() => {
     const m = window.location.hash.match(/^#product-(.+)$/)
     if (!m) return
@@ -28,20 +26,28 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // every view switch starts at the top, with a title + description to match
+  const onProduct = route.kind === 'product' && product != null
+
+  // every page switch starts at the top, with a title + description to match
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
-    const title =
-      view === 'home'
-        ? 'Marigold & Clay — Curated General Store'
-        : `${VIEW_LABEL[view]} — Marigold & Clay`
     const description =
-      'Marigold & Clay is a working storefront demo: curated clothing, accessories, stationery and gifts — browse, filter and order in one WhatsApp message.'
+      'Marigold & Clay is a working storefront: curated clothing, accessories, stationery and gifts — browse, filter and order in one WhatsApp message.'
+    let title: string
+    if (onProduct && product) {
+      title = `${product.name} — Marigold & Clay`
+      document
+        .querySelector('meta[name="description"]')
+        ?.setAttribute('content', product.description)
+    } else {
+      title =
+        view === 'home' || view == null
+          ? 'Marigold & Clay — Curated General Store'
+          : `${VIEW_LABEL[view]} — Marigold & Clay`
+      document.querySelector('meta[name="description"]')?.setAttribute('content', description)
+    }
     document.title = title
-    document
-      .querySelector('meta[name="description"]')
-      ?.setAttribute('content', description)
-  }, [view])
+  }, [route, onProduct, product, view])
 
   return (
     <div className="min-h-screen">
@@ -58,7 +64,9 @@ export default function App() {
         >
           <main>
             <AnimatePresence mode="wait" initial={false}>
-              <StorePage key={`shop-${view}`} />
+              <StorePage
+                key={route.kind === 'product' ? `p-${route.slug}` : `v-${route.view}`}
+              />
             </AnimatePresence>
           </main>
           <Footer />
@@ -66,7 +74,6 @@ export default function App() {
       )}
       {/* overlays */}
       <InquiryCart />
-      <ProductModal />
       <StickyCTA />
     </div>
   )

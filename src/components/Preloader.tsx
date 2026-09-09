@@ -5,7 +5,7 @@ import { lockScroll, unlockScroll } from '../utils/scrollLock'
 const CURTAIN_EASE = [0.76, 0, 0.24, 1] as const
 const TITLE = 'Marigold & Clay'
 /* the closed-silk act gets room to breathe; the part begins at PART_MS */
-const PART_MS = 2750
+const PART_MS = 2350
 
 /* ── stitched seam that draws itself, then petals bloom ─────────────── */
 
@@ -174,22 +174,6 @@ function CurtainArtwork({ reduce }: { reduce: boolean }) {
           Est · Curated Goods — Rawalpindi
         </motion.p>
       </div>
-
-      {/* a slow sheen crosses the embroidery while it holds — light
-          catching the thread before the seam opens */}
-      {!reduce && (
-        <motion.div
-          className="pointer-events-none absolute -inset-x-12 -inset-y-8 mix-blend-soft-light"
-          style={{
-            background:
-              'linear-gradient(105deg, transparent 38%, rgba(255,243,224,.9) 50%, transparent 62%)',
-            filter: 'blur(2px)',
-          }}
-          initial={{ x: '-115%' }}
-          animate={{ x: '115%' }}
-          transition={{ duration: 1.15, delay: 2.0, ease: [0.6, 0, 0.3, 1] }}
-        />
-      )}
     </>
   )
 }
@@ -332,10 +316,10 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
     }, partAt)
     // after the panels sweep clear, dissolve the opaque silk backdrop so the
     // already-settled storefront crossfades in rather than popping in hard
-    const t2 = window.setTimeout(() => setPhase(2), partAt + (reduce ? 420 : 1350))
+    const t2 = window.setTimeout(() => setPhase(2), partAt + (reduce ? 380 : 1180))
     const t3 = window.setTimeout(
       () => setPhase(3),
-      partAt + (reduce ? 420 : 1350) + (reduce ? 360 : 700),
+      partAt + (reduce ? 380 : 1180) + (reduce ? 340 : 620),
     )
     return () => {
       window.clearTimeout(t1)

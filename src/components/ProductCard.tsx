@@ -74,7 +74,7 @@ export const ProductCard = forwardRef<HTMLElement, ProductCardProps>(function Pr
         <div className="absolute inset-x-3 bottom-3 flex translate-y-2 items-center justify-center gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
           <span className="flex flex-1 items-center justify-center gap-1.5 rounded-[3px] bg-espresso py-2.5 text-[12px] font-bold text-cream">
             <IconEye className="h-4 w-4" />
-            Quick view
+            View piece
           </span>
           <button
             onClick={whatsapp}

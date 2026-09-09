@@ -10,17 +10,19 @@ import {
 } from 'react'
 import { priceOf, products, type Category, type Product } from '../data/products'
 
-/* ── Client-side hash routing — one URL per storefront view ────────
-   #/shop                    → Home (campaign storefront)
-   #/shop/new                → New Arrivals
-   #/shop/all                → Shop All
-   #/shop/sale               → The Sale
+/* ── Client-side hash routing — one URL per page ───────────────────
+   #/shop                        → Home (campaign storefront)
+   #/shop/new · /all · /sale     → New Arrivals · Shop All · The Sale
    #/shop/clothing|accessories|footwear|stationery|cosmetics|gifts
-                             → category collection pages
-   Plain anchor hashes (e.g. #policies) and #product-<slug> deep links
-   are NOT routes — they never flip the active view. */
+                                → category collection pages
+   #/shop/product/<slug>         → a full product detail page
+   Plain anchor hashes (e.g. #policies) and legacy #product-<slug>
+   deep links are NOT the URL form we steer users to. */
 
 export type ShopView = 'home' | 'new' | 'sale' | 'all' | Category
+export type ShopRoute =
+  | { kind: 'shop'; view: ShopView }
+  | { kind: 'product'; slug: string }
 
 export const CATEGORIES: Category[] = [
   'Clothing',
@@ -69,15 +71,20 @@ export const VIEW_LABEL: Record<ShopView, string> = {
   Gifts: 'Gifts',
 }
 
-/* the active view lives purely in the hash — unknown/empty hashes fall back
-   to the storefront home so nothing ever 404s */
-const viewFromHash = (): ShopView => {
+export const productPath = (slug: string) => `#/shop/product/${slug}`
+
+/* the active route lives purely in the hash — unknown/empty hashes fall
+   back to the storefront home so nothing ever 404s */
+const shopRouteFromHash = (): ShopRoute => {
   const h = window.location.hash
-  if (h.startsWith('#/shop') || h === '#/') {
-    const seg = h.replace(/^#\//, '').split('/')[1]?.toLowerCase() ?? ''
-    return SLUG_VIEW[seg] ?? 'home'
+  if (h.startsWith('#/shop')) {
+    const parts = h.slice(1).split('/').filter(Boolean) // ['shop', ...]
+    if (parts[1] === 'product' && parts[2]) return { kind: 'product', slug: parts[2] }
+    const v = SLUG_VIEW[parts[1]?.toLowerCase() ?? ''] ?? 'home'
+    return { kind: 'shop', view: v }
   }
-  return 'home'
+  // bare '#', '#/', or any non-route hash (anchors, legacy #product-<slug>)
+  return { kind: 'shop', view: 'home' }
 }
 
 export interface CartLine {
@@ -106,10 +113,12 @@ interface StoreValue {
   clear: () => void
   cartOpen: boolean
   setCartOpen: (open: boolean) => void
-  active: Product | null
+  route: ShopRoute
+  /** active collection view when browsing, else null on a product page */
+  view: ShopView | null
+  /** the product being viewed on a product page, else null */
+  product: Product | null
   openProduct: (p: Product) => void
-  closeProduct: () => void
-  view: ShopView
   goShop: (view?: ShopView, anchor?: string) => void
   scrollToAnchor: (id: string, smooth?: boolean) => void
   consumePendingAnchor: () => string | null
@@ -143,8 +152,7 @@ const scrollTop = (smooth: boolean) => {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>(loadLines)
   const [cartOpen, setCartOpen] = useState(false)
-  const [active, setActive] = useState<Product | null>(null)
-  const [view, setView] = useState<ShopView>(() => viewFromHash())
+  const [route, setRoute] = useState<ShopRoute>(() => shopRouteFromHash())
   const pendingAnchor = useRef<string | null>(null)
 
   useEffect(() => {
@@ -155,11 +163,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [lines])
 
-  /* back/forward buttons + direct hash edits drive the active view */
+  /* back/forward buttons + direct hash edits drive the active route */
   useEffect(() => {
     const onHash = () => {
-      const v = viewFromHash()
-      setView((prev) => (prev === v ? prev : v))
+      const r = shopRouteFromHash()
+      setRoute((prev) => (JSON.stringify(prev) === JSON.stringify(r) ? prev : r))
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
@@ -190,9 +198,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const clear = useCallback(() => setLines([]), [])
 
-  const openProduct = useCallback((p: Product) => setActive(p), [])
-  const closeProduct = useCallback(() => setActive(null), [])
-
   const scrollToAnchor = useCallback((id: string, smooth = true) => {
     const el = document.getElementById(id)
     if (!el) return
@@ -200,25 +205,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     el.scrollIntoView({ behavior: smooth && !reduced ? 'smooth' : 'auto', block: 'start' })
   }, [])
 
-  const navigate = useCallback((target: ShopView) => {
-    setView((prev) => (prev === target ? prev : target))
-    const hash = VIEW_PATH[target]
+  const pushRoute = useCallback((next: ShopRoute) => {
+    setRoute((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+    const hash =
+      next.kind === 'product'
+        ? productPath(next.slug)
+        : VIEW_PATH[next.view]
     if (window.location.hash !== hash) window.location.hash = hash
   }, [])
+
+  /* open a product's full detail page */
+  const openProduct = useCallback((p: Product) => pushRoute({ kind: 'product', slug: p.slug }), [pushRoute])
 
   /* go to a storefront page — home, a collection, or a category rack —
      optionally landing on a specific section of that page */
   const goShop = useCallback(
     (target: ShopView = 'home', anchor?: string) => {
-      if (view === target) {
+      const onCollection = route.kind === 'shop' && route.view === target
+      if (onCollection) {
         if (anchor) scrollToAnchor(anchor)
         else scrollTop(true)
         return
       }
       pendingAnchor.current = anchor ?? null
-      navigate(target)
+      pushRoute({ kind: 'shop', view: target })
     },
-    [view, navigate, scrollToAnchor],
+    [route, pushRoute, scrollToAnchor],
   )
 
   const consumePendingAnchor = useCallback(() => {
@@ -253,6 +265,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [lines],
   )
 
+  const product =
+    route.kind === 'product'
+      ? (products.find((p) => p.slug === route.slug) ?? null)
+      : null
+
+  const view: ShopView | null = route.kind === 'shop' ? route.view : null
+
   const value = useMemo<StoreValue>(
     () => ({
       lines,
@@ -265,10 +284,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clear,
       cartOpen,
       setCartOpen,
-      active,
-      openProduct,
-      closeProduct,
+      route,
       view,
+      product,
+      openProduct,
       goShop,
       scrollToAnchor,
       consumePendingAnchor,
@@ -280,15 +299,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lines,
       resolved,
       cartOpen,
-      active,
+      route,
       view,
+      product,
       searchTick,
       add,
       remove,
       setQty,
       clear,
       openProduct,
-      closeProduct,
       goShop,
       scrollToAnchor,
       consumePendingAnchor,
@@ -306,8 +325,8 @@ export function useStore(): StoreValue {
   return ctx
 }
 
-/* After a cross-view navigation, scroll to the requested section once
-   the target view has mounted. */
+/* After a cross-page navigation, scroll to the requested section once
+   the target page has mounted. */
 export function usePendingAnchorScroll() {
   const { consumePendingAnchor, scrollToAnchor } = useStore()
   useEffect(() => {
