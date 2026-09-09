@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Marquee } from '../components/Sections'
 import {
   CampaignHero,
@@ -18,7 +17,9 @@ import ProductPage from './ProductPage'
 /* ── The Shop — Marigold & Clay storefront ───────────────────────────
    home      → campaign storefront
    other view→ full collection page (New / Sale / Shop All / a rack)
-   product   → a full product detail page, Shopify-style with its own URL */
+   product   → a full product detail page, Shopify-style with its own URL
+   The wrapper is intentionally a plain div: it must never sit invisible
+   while a mount animation runs, so content is always shown on navigation. */
 
 function HomeSections() {
   return (
@@ -42,12 +43,7 @@ export default function StorePage() {
   const { route, view, product } = useStore()
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, transition: { duration: 0.16 } }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    >
+    <div>
       {route.kind === 'product' ? (
         product ? (
           <ProductPage product={product} />
@@ -59,6 +55,6 @@ export default function StorePage() {
       ) : (
         <CollectionPage view={view!} />
       )}
-    </motion.div>
+    </div>
   )
 }

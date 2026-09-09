@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import InquiryCart from './components/InquiryCart'
 import Nav from './components/Nav'
@@ -63,11 +63,15 @@ export default function App() {
           transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
         >
           <main>
-            <AnimatePresence mode="wait" initial={false}>
-              <StorePage
-                key={route.kind === 'product' ? `p-${route.slug}` : `v-${route.view}`}
-              />
-            </AnimatePresence>
+            {/* Remount the page on every route change. We deliberately avoid
+                AnimatePresence mode="wait" cross-page exit/enter here: it can
+                leave the incoming page stuck at opacity 0 (blank) when the
+                exit handoff is interrupted in a real browser. Directly keyed
+                remounting makes each navigation mount exactly like the initial
+                page load, which is reliable. */}
+            <StorePage
+              key={route.kind === 'product' ? `p-${route.slug}` : `v-${route.view}`}
+            />
           </main>
           <Footer />
         </motion.div>
