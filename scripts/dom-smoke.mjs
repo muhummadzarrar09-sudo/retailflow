@@ -91,9 +91,23 @@ for (const k of [
 // has to be jsdom's own — Node's signal fails its type check
 globalThis.AbortController = window.AbortController
 globalThis.AbortSignal = window.AbortSignal
-globalThis.matchMedia = (q) => window.matchMedia(q)
 window.scrollTo = () => {}
-window.matchMedia ??= () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+// jsdom 2x ships a MediaQueryList without the deprecated addListener/removeListener
+// pair. framer-motion's useReducedMotion calls them when present, and the throw it
+// gets back is logged from inside the library — noisy enough to mask a real failure,
+// so hand it a complete MQL instead.
+const mql = (media) => ({
+  media,
+  matches: false,
+  onchange: null,
+  addEventListener() {},
+  removeEventListener() {},
+  addListener() {},
+  removeListener() {},
+  dispatchEvent: () => false,
+})
+window.matchMedia = (q) => mql(q)
+globalThis.matchMedia = (q) => mql(q)
 
 class IO {
   constructor(cb) {

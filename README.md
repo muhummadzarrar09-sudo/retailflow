@@ -51,40 +51,97 @@ straight away.
 ## Images
 
 Every photo on the site lives in `public/products/*.jpg` — those files are the masters and the
-source of truth. `scripts/img-pipeline.mjs` compiles them into a responsive ladder:
+source of truth. Two scripts work on them, in this order:
 
 ```
-public/products/<slug>.jpg            master (never modified)
+scripts/enhance-masters.py    (python)  quality pass over the masters themselves
+scripts/img-pipeline.mjs      (node)    compiles masters -> responsive ladder + manifest
+```
+
+### The quality pass
+
+The masters were 1024² product frames and a 1376×768 hero. The site asks the hero to fill a
+2,880-device-px banner, and the product modal asks for 1024 exactly to fill its box — so every
+large slot on the page was a browser upscale. `scripts/enhance-masters.py` rebuilds the masters
+with classical + lightweight learned filters (no generative model, nothing repainted):
+
+1. **Non-local means denoise** (luma `h=3`, chroma `h=4`) — kills the JPEG mosquito noise that
+   upscaling would otherwise enlarge into texture.
+2. **FSRCNN ×2 super-resolution** via `cv2.dnn_superres` (39 kB weights, 1.4 s per 1024² frame) —
+   a tiny learned predictor, not a diffusion model, so it cannot invent detail. EDSR ×2 was tried
+   and rejected: ~10 min per frame on this machine and it OOM-kills at 4 GB RAM for a gain
+   indistinguishable from FSRCNN on this catalog.
+3. **Luminosity unsharp** (radius 1.6, amount 0.42, on L\* only) — micro-contrast is what reads as
+   "sharp" on a phone, and keeping it in the lightness channel means no coloured fringing on edges.
+4. **Highlight rolloff** (soft shoulder at 226/255) then **+4 % vibrance**, so the marigold walls
+   stop clipping to flat cream without going garish.
+5. **Progressive JPEG q84, 4:4:4** — chroma is what a fabric photo is made of, and 4:2:0 would
+   throw away the thread colour; non-campaign frames are clamped to 1600px (the widest slot the
+   site paints) with `INTER_AREA`, which doubles as an anti-alias pass.
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install numpy pillow opencv-contrib-python-headless
+gh api -H "Accept: application/vnd.github.raw+json" \
+  repos/Saafke/EDSR_Tensorflow/contents/models/FSRCNN_x2.pb > .venv/models/FSRCNN_x2.pb
+.venv/bin/python scripts/enhance-masters.py --dry-run     # metrics only, writes nothing
+.venv/bin/python scripts/enhance-masters.py --install     # rewrites public/products/*.jpg
+```
+
+Measured on the served slots (identical canvas, identical encoder — old master vs enhanced):
+
+| Slot | Edge detail | Bytes |
+| --- | --- | --- |
+| card 400w | ×2.47 | 13 KB → 15 KB |
+| card 640w | ×2.48 | 30 KB → 33 KB |
+| modal 1024w | ×1.15 | 74 KB → **64 KB** |
+| zoom crop 1600w (new band) | ×1.75 | 117 KB → **111 KB** |
+| campaign hero 1920w / 2560w | ×2.83 / ×2.99 | 60 → 65 KB / 88 → 92 KB |
+
+Across all 37 masters: flat-area noise 1.35 → 0.50, JPEG 8×8 blocking 0.69 → 0.01, and
+**SSIM 0.9949 against the source frame** — the content is provably the same photo, only cleaner
+and larger. CLAHE-based local contrast is implemented but off by default: on this catalog it
+amplified mottling in the shared painted backdrop, which looked worse than the mid-tones it bought.
+
+### The ladder
+
+```
+public/products/<slug>.jpg            master (1600² product / 2752×1536 hero)
 public/products/opt/<slug>/           generated variants — gitignored
-  <slug>-400.avif / .webp             card size
-  <slug>-640.avif / .webp             grid / tile size
-  <slug>-1024.avif / .webp            modal size (the master's native width)
+  <slug>-400.avif / .webp             card size on a phone
+  <slug>-640.avif / .webp             card size on a retina desktop
+  <slug>-1024.avif / .webp            product modal
+  <slug>-1600.avif / .webp            the modal's zoomed Detail/Texture crops
   campaign-…-768 → 2560               full-bleed campaign bands
   <slug>-portrait-<w>.{avif,webp}     art-directed 4:5 crop for phones (campaign only)
 src/data/images.generated.ts          committed manifest (sizes, bands, LQIP)
 ```
 
+Every band is now at or below the master's native width — nothing on the site is an upscale, so
+`lanczos + acutance` only ever works on downsamples.
+
 ```bash
 npm run images        # incremental — re-encodes only when a master changed
-npm run images:force  # rebuild everything (~45s)
+npm run images:force  # rebuild everything (~90s)
 ```
 
 `npm run dev` and `npm run build` run the pipeline first, so a fresh clone works with no extra
 step. Drop a real client photo into `public/products/` with the same filename and re-run.
 
-What the pipeline buys, measured on this catalog (per page load):
+What the ladder buys, measured on this catalog (the 25 images a catalog page actually loads):
 
-| Scenario | JPEG masters | WebP | AVIF |
+| Scenario | Raw masters | WebP | AVIF |
 | --- | --- | --- | --- |
-| 25 catalog images at card size, phone (≈570 device px) | 4,706 KB | 1,055 KB | **632 KB (−87%)** |
-| 25 catalog images at card size, desktop retina | 4,706 KB | 2,163 KB | **1,421 KB (−70%)** |
-| Campaign hero, phone (4:5 crop) | 120 KB | 51 KB | **42 KB (−65%)** |
-| Campaign hero, desktop (2,880 device px) | 120 KB | 129 KB | **104 KB, at 2× the source resolution** |
+| card size on a phone (350 device px → 400w band) | 7,027 KB | 392 KB | **246 KB (−97%)** |
+| card size on a retina desktop (600 px → 640w) | 7,027 KB | 807 KB | **512 KB (−93%)** |
+| product modal, one image (1024w) | 281 KB | 62 KB | **41 KB** |
+| the modal's zoomed Detail crop (1600w, new) | 281 KB | 108 KB | **75 KB** |
+| campaign hero on a phone (4:5 crop, 1280w) | 362 KB | 37 KB | **26 KB** |
+| campaign hero on a desktop (2560w, native) | 362 KB | 92 KB | **71 KB** |
 
-Full-width slots beyond the master's native size are resampled with lanczos + controlled acutance
-(edge energy 4.54 vs 3.66 for the browser's bilinear stretch, i.e. visibly crisper detail), and the
-JPEG fallback keeps 4:4:4 chroma. Every `<img>` ships `width`/`height` (no layout shift) and a
-20px blurred stand-in (no white flash mid-decode); everything below the fold is `loading="lazy"`.
+Every `<img>` ships `width`/`height` (no layout shift) and a 20px blurred stand-in (no white flash
+mid-decode); everything below the fold is `loading="lazy"`. `preview.html` inlines a 1024px copy
+of each master, so the single-file artifact got *smaller* (8.95 MB → 6.22 MB) while the pixels in
+it improved.
 
 ## Server-side rendering
 

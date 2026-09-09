@@ -85,12 +85,17 @@ if (process.env.SSR_DEBUG) {
   console.log('…', html.slice(Math.max(0, i - 600), i + 400).replace(/></g, '>\n<'))
   process.exit(0)
 }
+// every <img> must carry a real intrinsic size (CLS defence). Written as a
+// ratio rather than a literal pair so the check survives a change of master size.
+const imgTags = html.match(/<img[^>]*>/gi) || []
+const sizedImgs = imgTags.filter((t) => /width="\d{3,}"/i.test(t) && /height="\d{3,}"/i.test(t))
+
 const checks = [
   ['catalog content is server-visible', html.includes('Embroidered 2-Piece Suit')],
   ['pricing is server-visible', /Rs\. 6,500|Rs\. 1,/.test(html)],
   ['images ship srcset/sizes', /srcset=/i.test(html) && /sizes=/i.test(html)],
   ['img fallback is the JPEG master', /<img[^>]+src="\/products\/[a-z-]+\.jpg"/i.test(html)],
-  ['images ship intrinsic size', html.includes('width="1024"') || html.includes('width="1376"')],
+  ['images ship intrinsic size', imgTags.length > 0 && sizedImgs.length === imgTags.length],
   ['images are lazy by default', html.includes('loading="lazy"')],
   ['JSON-LD left for the client (no DOM at render)', !html.includes('application/ld+json')],
   ['no platform cross-sell anywhere', !/Want one for your shop|For Shop Owners|goOwners|#\/owners/i.test(html)],

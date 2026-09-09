@@ -11,3 +11,11 @@ scripts/.ssr-entry.tsx
 scripts/.ssr-out.cjs
 scripts/.dom-entry.tsx
 scripts/.dom-out.mjs
+
+# Python quality pass output — `--install` copies it over public/products,
+# so the enhanced pixels live in the masters and this stays scratch
+assets-src/
+
+# python quality-pass toolchain (never committed)
+.venv/
+__pycache__/

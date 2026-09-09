@@ -60,6 +60,10 @@ real catalog content, prices, `srcset`/`sizes` and intrinsic sizes are in the HT
 
 ## 3 · Pictures — including the part that didn't work
 
+> Superseded on the numbers by `Docs/WHITE-GLOVE-5.md`: the masters were re-cut by a Python quality
+> pass afterwards, so 248 variants / 13.4 MB / 1024² masters are no longer current. The reasoning
+> in this section still stands.
+
 The request was to re-master all 25 product + 5 campaign photos at higher fidelity, then make them
 responsive. The second half shipped. The first half was tested and rejected:
 

@@ -9,14 +9,15 @@
  *         src/data/images.generated.ts (committed — the app imports it)
  *
  * Why each step exists
- *  - srcset/sizes      a phone stops downloading a 1024² file for a 190px card
- *                      (12KB @400w instead of 152KB — a ~12x cut per image)
+ *  - srcset/sizes      a phone stops downloading a 1600² master for a 190px card
+ *                      (≈10KB AVIF at 400w instead of the ~284KB master)
  *  - AVIF + WebP       ~45% fewer bytes than the JPEG at equal quality, so the
  *                      bytes we save buy a HIGHER quality encode instead
- *  - chroma 4:4:4 +    the masters are 1024² / 1376×768 while the campaign hero
- *    lanczos+unsharp   paints up to ~2.9k device px wide; a server resample with
- *                      controlled acutance beats a browser bilinear stretch,
- *                      which is the softness people were seeing
+ *  - chroma 4:4:4 +    masters are 1600² / 2752x1536 because a full-bleed frame on
+ *    acutance          an ultrawide paints up to ~2.9k device px; resampling past
+ *                      the master is what turns fabric into porridge. Slots at or
+ *                      below native size are lanczos + controlled acutance, which
+ *                      beats a browser bilinear stretch — the softness people saw
  *  - portrait crops    a 1.79:1 hero on a 390×844 phone is a crop lottery
  *  - explicit w/h      zero layout shift; LQIP means no white flash mid-decode
  *  - no jpg re-encode  the master already IS the JPEG fallback
@@ -38,7 +39,9 @@ const PORTRAIT_AT = 767
 const MAX_UPSCALE = 2.1
 
 const GROUPS = {
-  product: { widths: [400, 640, 1024], portrait: [], quality: { avif: 50, webp: 76 } },
+  // 400 = phone card, 640 = desktop card, 1024 = modal, 1600 = the modal's
+  // zoomed Detail/Texture crops (a 2.1-2.6x transform over the box)
+  product: { widths: [400, 640, 1024, 1600], portrait: [], quality: { avif: 52, webp: 78 } },
   campaign: {
     widths: [768, 1280, 1920, 2560],
     portrait: [768, 1152],
@@ -102,7 +105,11 @@ async function buildOne(masterPath, slug, group) {
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
 
-  const wanted = cfg.widths.filter((w) => w <= Math.round(W * MAX_UPSCALE))
+  // A 4:5 campaign frame is never painted full-bleed across a desktop, so bands
+  // past its native width would only ever be an upscale — drop them.
+  const wanted = cfg.widths.filter(
+    (w) => w <= Math.round(W * MAX_UPSCALE) && !(H > W && w > 1920),
+  )
   const jobs = []
   for (const ext of ['avif', 'webp']) {
     for (const w of wanted) jobs.push({ ext, w, kind: 'wide' })

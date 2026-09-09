@@ -9,6 +9,7 @@
  */
 import { execSync } from 'node:child_process'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import sharp from 'sharp'
 import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
@@ -41,7 +42,15 @@ for (const file of readdirSync(productsDir)) {
   const ext = file.split('.').pop().toLowerCase()
   const type = mime[ext]
   if (!type) continue
-  const data = `data:${type};base64,${readFileSync(join(productsDir, file)).toString('base64')}`
+  // Masters are 1600-2752px wide (they are the pipeline's source of truth), but
+  // the largest slot this artifact ever paints is a ~1024px card/modal, so
+  // inlining them byte-for-byte would triple the file for pixels no browser asks
+  // for. Downscale, re-encode, then base64.
+  const buf = await sharp(join(productsDir, file))
+    .resize({ width: 1024, withoutEnlargement: true })
+    .jpeg({ quality: 78, progressive: true, chromaSubsampling: '4:2:0' })
+    .toBuffer()
+  const data = `data:${type};base64,${buf.toString('base64')}`
   const needle = `/products/${file}`
   if (js.includes(needle)) {
     js = js.split(needle).join(data)
