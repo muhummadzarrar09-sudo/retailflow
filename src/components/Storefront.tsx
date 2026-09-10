@@ -1,12 +1,4 @@
-import {
-  motion,
-  useAnimationFrame,
-  useInView,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from 'framer-motion'
+import { motion, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { priceOf, products, type Category, type Product } from '../data/products'
 import { useStore } from '../store/StoreContext'
@@ -51,122 +43,62 @@ function MaskedLine({
 }
 
 /* ── Campaign hero — the landing stage ───────────────────────────────
-   Solid espresso canvas pinned for the scroll. The slogan, headline and
-   two actions dissolve into the background first; then the photo fan
-   leaves in a chain — the lower-most card (≈270° on the ring) leads and
-   every card follows one by one, sweeping off through the right-bottom
-   edge of the canvas. Positions are computed per animation frame so the
-   orbit is a true ellipse (wide on desktop, taller on portrait). */
+   A background slideshow of the new/featured picks woven with the
+   campaign stills, over solid espresso with text-safe scrims. The stage
+   is pinned: the headline and the two actions dissolve into the backdrop
+   on scroll, the show keeps running, then the store continues below. */
 
-const ORBIT_PHOTOS: Product[] = (() => {
-  const picks: Product[] = []
-  for (const p of products) if ((p.isNew || p.featured) && picks.length < 8) picks.push(p)
-  for (const p of products) if (picks.length < 8 && !picks.includes(p)) picks.push(p)
-  return picks
+const HERO_SLIDES: { src: string; alt: string }[] = (() => {
+  const picks = products.filter((p) => p.isNew || p.featured)
+  const campaign = [
+    'campaign-hero',
+    'campaign-craft',
+    'campaign-sale',
+    'campaign-flatlay',
+    'campaign-look',
+  ]
+  const slides: { src: string; alt: string }[] = []
+  for (let i = 0; i < Math.max(picks.length, campaign.length); i++) {
+    if (i < picks.length) slides.push({ src: picks[i].image, alt: picks[i].name })
+    if (i < campaign.length)
+      slides.push({ src: `/products/${campaign[i]}.jpg`, alt: 'Marigold & Clay campaign still' })
+  }
+  return slides
 })()
 
-const COUNT = ORBIT_PHOTOS.length
-/* radians per ms — one slow revolution ≈ 39s */
-const ORBIT_SPEED = 0.00016
+const SLIDE_MS = 4500
+const SLIDE_FADE = 1.05
 
-/* chain order — the card closest to the bottom of the ring leads, the pack
-   follows one by one in the ring's travel direction */
-const chainRank = (i: number) => {
-  const a = (360 / COUNT) * i
-  return Math.round((((a - 90) % 360) + 360) % 360 / (360 / COUNT))
-}
-
-interface StageDims {
-  /** ellipse radii */
-  rx: number
-  ry: number
-  /** escape target — past the right edge, toward the bottom */
-  tx: number
-  ty: number
-}
-
-/* identical defaults on server and client (hydration-safe); real viewport
-   numbers arrive in the effect before the first painted frame */
-function useStageDims(): StageDims {
-  const [dims, setDims] = useState<StageDims>({ rx: 460, ry: 240, tx: 820, ty: 560 })
-  useEffect(() => {
-    const measure = () =>
-      setDims({
-        rx: Math.max(150, Math.min(window.innerWidth * 0.34, 430)),
-        ry: Math.max(170, Math.min(window.innerHeight * 0.38, 330)),
-        tx: window.innerWidth * 0.64,
-        ty: window.innerHeight * 0.6,
-      })
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
-  return dims
-}
-
-function OrbitFan({
-  ready,
-  scrollYProgress,
-}: {
-  ready: boolean
-  scrollYProgress: MotionValue<number>
-}) {
+function HeroSlideshow({ ready }: { ready: boolean }) {
   const reduce = useReducedMotion()
-  const dims = useStageDims()
-  const items = useRef<(HTMLDivElement | null)[]>([])
-  const sim = useRef({ t: 0, sp: 0 })
+  const [idx, setIdx] = useState(0)
 
+  // advance only after the curtain lifts; reduced motion = a single still
   useEffect(() => {
-    sim.current.sp = scrollYProgress.get()
-    return scrollYProgress.on('change', (v) => {
-      sim.current.sp = v
-    })
-  }, [scrollYProgress])
-
-  useAnimationFrame((_, delta) => {
-    if (!reduce) sim.current.t -= delta * ORBIT_SPEED
-    for (let i = 0; i < COUNT; i++) {
-      const el = items.current[i]
-      if (!el) continue
-      const rank = chainRank(i)
-      const start = 0.04 + rank * 0.085
-      const progress = reduce ? 0 : Math.min(1, Math.max(0, (sim.current.sp - start) / 0.3))
-      const eased = 1 - Math.pow(1 - progress, 3)
-      const ang = ((2 * Math.PI) / COUNT) * i + sim.current.t
-      const bx = Math.cos(ang) * dims.rx
-      const by = Math.sin(ang) * dims.ry
-      const x = bx + (dims.tx - bx) * eased
-      const y = by + (dims.ty - by) * eased
-      el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
-    }
-  })
+    if (reduce || !ready) return
+    if (HERO_SLIDES.length < 2) return
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % HERO_SLIDES.length), SLIDE_MS)
+    return () => window.clearInterval(t)
+  }, [reduce, ready])
 
   return (
-    <div className="absolute inset-0">
-      {ORBIT_PHOTOS.map((p, i) => (
-        <div
-          key={p.id}
-          ref={(el) => {
-            items.current[i] = el
-          }}
-          className="absolute left-1/2 top-[46%] -ml-[2.5rem] -mt-[3.5rem] h-[7rem] w-[5rem] sm:-ml-[3.25rem] sm:-mt-[4.5rem] sm:h-[9rem] sm:w-[6.5rem] lg:-ml-[3.75rem] lg:-mt-[5rem] lg:h-[10rem] lg:w-[7.5rem]"
+    <div aria-hidden className="absolute inset-0">
+      {HERO_SLIDES.map((slide, i) => (
+        <motion.div
+          key={slide.src}
+          className="absolute inset-0"
+          initial={false}
+          animate={{ opacity: i === idx ? 1 : 0 }}
+          transition={{ duration: SLIDE_FADE, ease: [0.4, 0, 0.2, 1] }}
         >
-          <motion.div
-            className="h-full w-full overflow-hidden rounded-2xl border border-cream/25 shadow-soft"
-            initial={{ opacity: 0, scale: 0.55 }}
-            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.55 }}
-            transition={{ duration: 0.65, delay: 0.42 + i * 0.06, ease }}
-          >
-            <img
-              src={p.image}
-              alt=""
-              loading="eager"
-              draggable={false}
-              className="h-full w-full object-cover"
-            />
-            <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
-          </motion.div>
-        </div>
+          <img
+            src={slide.src}
+            alt=""
+            loading={i === 0 ? 'eager' : 'lazy'}
+            draggable={false}
+            className="h-full w-full object-cover object-center"
+          />
+        </motion.div>
       ))}
     </div>
   )
@@ -178,31 +110,35 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
 
-  // the text dissolves into the background first — blur, lift, fade
-  const textFade = useTransform(scrollYProgress, [0, 0.3], [1, 0])
-  const textLift = useTransform(scrollYProgress, [0, 0.35], ['0rem', '-3.5rem'])
-  const textBlur = useTransform(scrollYProgress, [0, 0.32], ['blur(0px)', 'blur(12px)'])
-  const cueFade = useTransform(scrollYProgress, [0, 0.1], [1, 0])
-  // reduced-motion users skip the chain; the fan simply fades away
-  const fanFadeExit = useTransform(scrollYProgress, [0.45, 0.85], [1, 0])
+  // the text dissolves into the backdrop first — blur, lift, fade
+  const textFade = useTransform(scrollYProgress, [0, 0.32], [1, 0])
+  const textLift = useTransform(scrollYProgress, [0, 0.36], ['0rem', '-3.5rem'])
+  const textBlur = useTransform(scrollYProgress, [0, 0.34], ['blur(0px)', 'blur(12px)'])
 
   return (
     <section
       id="top"
       ref={ref}
-      /* pulled up under the floating header — the espresso canvas reaches the
-         very top of the document, so nothing pale peeks behind the pill */
-      className="relative -mt-[4.25rem] h-[calc(178svh+4.25rem)] bg-espresso"
+      /* pulled up under the floating header — the canvas reaches the very
+         top of the document, so nothing pale peeks behind the pill */
+      className="relative -mt-[4.25rem] h-[calc(135svh+4.25rem)] bg-espresso"
     >
-      {/* pinned for the whole scroll */}
+      {/* pinned stage */}
       <div className="sticky top-0 h-[100svh] overflow-hidden">
-        {/* warm ember glow — palette-appropriate solid, lifted at center */}
+        <HeroSlideshow ready={ready} />
+
+        {/* scrims — keep every slide text-safe without flattening the shot */}
+        <div aria-hidden className="absolute inset-0 bg-espresso/45" />
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-b from-espresso/55 via-espresso/20 to-espresso/70"
+        />
         <div
           aria-hidden
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(72% 58% at 50% 40%, rgba(192,91,44,.16), rgba(42,33,27,0) 72%)',
+              'radial-gradient(60% 48% at 50% 46%, rgba(42,33,27,0.42), rgba(42,33,27,0) 82%)',
           }}
         />
 
@@ -215,14 +151,17 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
             initial={{ opacity: 0 }}
             animate={ready ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.42 }}
-            className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-mega text-cream/65"
+            className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-mega text-cream/75"
           >
-            <span className="h-px w-6 bg-clay/70" aria-hidden />
+            <span className="h-px w-6 bg-clay/80" aria-hidden />
             Marigold &amp; Clay · Season 04 — Rawalpindi
-            <span className="h-px w-6 bg-clay/70" aria-hidden />
+            <span className="h-px w-6 bg-clay/80" aria-hidden />
           </motion.p>
 
-          <h1 className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-cream sm:text-6xl lg:text-[4.6rem]">
+          <h1
+            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-cream sm:text-6xl lg:text-[4.6rem]"
+            style={{ textShadow: '0 2px 26px rgba(42,33,27,0.45)' }}
+          >
             <MaskedLine delay={0.52} play={ready}>
               Dress like the
             </MaskedLine>
@@ -246,29 +185,17 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
             </button>
             <button
               onClick={() => goShop('sale')}
-              className="flex h-12 items-center gap-2 rounded-full bg-terracotta px-7 text-sm font-bold text-cream transition-all hover:bg-terracotta-dark active:scale-[0.98]"
+              className="flex h-12 items-center gap-2 rounded-full bg-terracotta px-7 text-sm font-bold text-cream shadow-pop transition-all hover:bg-terracotta-dark active:scale-[0.98]"
             >
               The Autumn Edit
             </button>
           </motion.div>
         </motion.div>
 
-        {/* the fan — rides ABOVE the text so the chain sweeps through where
-            the headline stood */}
-        <motion.div
-          className="absolute inset-0 z-20"
-          initial={{ opacity: 0 }}
-          animate={ready ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.9, delay: 0.3 }}
-          style={reduce ? { opacity: fanFadeExit } : undefined}
-        >
-          <OrbitFan ready={ready} scrollYProgress={scrollYProgress} />
-        </motion.div>
-
         {/* scroll cue — exits with the text */}
         <motion.div
           className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block"
-          style={{ opacity: cueFade }}
+          style={{ opacity: textFade }}
           aria-hidden
         >
           <motion.div
