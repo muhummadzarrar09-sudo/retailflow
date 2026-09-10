@@ -1,4 +1,12 @@
-import { motion, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import {
+  motion,
+  useAnimationFrame,
+  useInView,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { priceOf, products, type Category, type Product } from '../data/products'
 import { useStore } from '../store/StoreContext'
@@ -43,10 +51,12 @@ function MaskedLine({
 }
 
 /* ── Campaign hero — the landing stage ───────────────────────────────
-   Solid espresso canvas, the season slogan and headline centered, two
-   actions beneath it, and the new/featured photos circling the headline
-   like a fan. Scrolling lifts the text away first, then gathers the fan
-   to the right and hoops it off the canvas before the store continues. */
+   Solid espresso canvas pinned for the scroll. The slogan, headline and
+   two actions dissolve into the background first; then the photo fan
+   leaves in a chain — the lower-most card (≈270° on the ring) leads and
+   every card follows one by one, sweeping off through the right-bottom
+   edge of the canvas. Positions are computed per animation frame so the
+   orbit is a true ellipse (wide on desktop, taller on portrait). */
 
 const ORBIT_PHOTOS: Product[] = (() => {
   const picks: Product[] = []
@@ -55,62 +65,110 @@ const ORBIT_PHOTOS: Product[] = (() => {
   return picks
 })()
 
-const ORBIT_SECONDS = 52
+const COUNT = ORBIT_PHOTOS.length
+/* radians per ms — one slow revolution ≈ 39s */
+const ORBIT_SPEED = 0.00016
 
-function OrbitFan({ ready }: { ready: boolean }) {
+/* chain order — the card closest to the bottom of the ring leads, the pack
+   follows one by one in the ring's travel direction */
+const chainRank = (i: number) => {
+  const a = (360 / COUNT) * i
+  return Math.round((((90 - a) % 360) + 360) % 360 / (360 / COUNT))
+}
+
+interface StageDims {
+  /** ellipse radii */
+  rx: number
+  ry: number
+  /** escape target — past the right edge, toward the bottom */
+  tx: number
+  ty: number
+}
+
+/* identical defaults on server and client (hydration-safe); real viewport
+   numbers arrive in the effect before the first painted frame */
+function useStageDims(): StageDims {
+  const [dims, setDims] = useState<StageDims>({ rx: 460, ry: 240, tx: 820, ty: 560 })
+  useEffect(() => {
+    const measure = () =>
+      setDims({
+        rx: Math.max(150, Math.min(window.innerWidth * 0.4, 470)),
+        ry: Math.max(150, Math.min(window.innerHeight * 0.29, 265)),
+        tx: window.innerWidth * 0.64,
+        ty: window.innerHeight * 0.6,
+      })
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+  return dims
+}
+
+function OrbitFan({
+  ready,
+  scrollYProgress,
+}: {
+  ready: boolean
+  scrollYProgress: MotionValue<number>
+}) {
   const reduce = useReducedMotion()
-  const count = ORBIT_PHOTOS.length
+  const dims = useStageDims()
+  const items = useRef<(HTMLDivElement | null)[]>([])
+  const sim = useRef({ t: 0, sp: 0 })
+
+  useEffect(() => {
+    sim.current.sp = scrollYProgress.get()
+    return scrollYProgress.on('change', (v) => {
+      sim.current.sp = v
+    })
+  }, [scrollYProgress])
+
+  useAnimationFrame((_, delta) => {
+    if (!reduce) sim.current.t += delta * ORBIT_SPEED
+    for (let i = 0; i < COUNT; i++) {
+      const el = items.current[i]
+      if (!el) continue
+      const rank = chainRank(i)
+      const start = 0.04 + rank * 0.085
+      const progress = reduce ? 0 : Math.min(1, Math.max(0, (sim.current.sp - start) / 0.3))
+      const eased = 1 - Math.pow(1 - progress, 3)
+      const ang = ((2 * Math.PI) / COUNT) * i + sim.current.t
+      const bx = Math.cos(ang) * dims.rx
+      const by = Math.sin(ang) * dims.ry
+      const x = bx + (dims.tx - bx) * eased
+      const y = by + (dims.ty - by) * eased
+      el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
+    }
+  })
+
   return (
-    <motion.div
-      aria-hidden
-      className="pointer-events-none absolute inset-0"
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
-      transition={{ duration: 1.1, delay: 0.42, ease }}
-    >
-      {/* the ring — one slow continuous revolution */}
-      <motion.div
-        className="absolute left-1/2 top-1/2"
-        style={{ x: '-50%', y: '-50%' }}
-        animate={reduce ? undefined : { rotate: 360 }}
-        transition={
-          reduce ? undefined : { repeat: Infinity, duration: ORBIT_SECONDS, ease: 'linear' }
-        }
-      >
-        {ORBIT_PHOTOS.map((p, i) => {
-          const a = (360 / count) * i
-          return (
-            <div
-              key={p.id}
-              className="absolute left-0 top-0"
-              style={{
-                transform: `rotate(${a}deg) translate(var(--orbit-r, 15rem)) rotate(${-a}deg)`,
-              }}
-            >
-              {/* counter-revolve at the same rate so cards stay upright */}
-              <motion.div
-                className="-translate-x-1/2 -translate-y-1/2"
-                animate={reduce ? undefined : { rotate: -360 }}
-                transition={
-                  reduce ? undefined : { repeat: Infinity, duration: ORBIT_SECONDS, ease: 'linear' }
-                }
-              >
-                <div className="h-28 w-20 overflow-hidden rounded-2xl border border-cream/25 shadow-soft sm:h-36 sm:w-26 lg:h-40 lg:w-30">
-                  <img
-                    src={p.image}
-                    alt=""
-                    loading="eager"
-                    draggable={false}
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
-                </div>
-              </motion.div>
-            </div>
-          )
-        })}
-      </motion.div>
-    </motion.div>
+    <div className="absolute inset-0">
+      {ORBIT_PHOTOS.map((p, i) => (
+        <div
+          key={p.id}
+          ref={(el) => {
+            items.current[i] = el
+          }}
+          className="absolute left-1/2 top-1/2 -ml-[2.5rem] -mt-[3.5rem] h-[7rem] w-[5rem] sm:-ml-[3.25rem] sm:-mt-[4.5rem] sm:h-[9rem] sm:w-[6.5rem] lg:-ml-[3.75rem] lg:-mt-[5rem] lg:h-[10rem] lg:w-[7.5rem]"
+        >
+          <motion.div
+            className="h-full w-full overflow-hidden rounded-2xl border border-cream/25 shadow-soft"
+            initial={{ opacity: 0, scale: 0.55 }}
+            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.55 }}
+            transition={{ duration: 0.65, delay: 0.42 + i * 0.06, ease }}
+          >
+            <img
+              src={p.image}
+              alt=""
+              loading="eager"
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
+          </motion.div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -120,23 +178,21 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
 
-  // the text yields the canvas first…
+  // the text dissolves into the background first — blur, lift, fade
   const textFade = useTransform(scrollYProgress, [0, 0.3], [1, 0])
   const textLift = useTransform(scrollYProgress, [0, 0.35], ['0rem', '-3.5rem'])
+  const textBlur = useTransform(scrollYProgress, [0, 0.32], ['blur(0px)', 'blur(12px)'])
   const cueFade = useTransform(scrollYProgress, [0, 0.1], [1, 0])
-  // …then the fan gathers right, hoops up, and sweeps out of the canvas
-  const fanX = useTransform(scrollYProgress, [0.08, 0.55, 1], ['0vw', '26vw', '135vw'])
-  const fanScale = useTransform(scrollYProgress, [0, 0.55, 1], [1, 1.32, 1.12])
-  const fanTilt = useTransform(scrollYProgress, [0, 1], [0, 34])
+  // reduced-motion users skip the chain; the fan simply fades away
   const fanFadeExit = useTransform(scrollYProgress, [0.45, 0.85], [1, 0])
 
   return (
     <section
       id="top"
       ref={ref}
-      className="relative h-[152svh] bg-espresso"
-      style={{ ['--orbit-r' as never]: 'clamp(9.5rem, 26vw, 19rem)' } as React.CSSProperties}
+      className="relative h-[178svh] bg-espresso"
     >
+      {/* pinned for the whole scroll */}
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         {/* warm ember glow — palette-appropriate solid, lifted at center */}
         <div
@@ -148,18 +204,10 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           }}
         />
 
-        {/* orbiting catalogue fan + its scroll-driven exit */}
-        <motion.div
-          className="absolute inset-0"
-          style={reduce ? { opacity: fanFadeExit } : { x: fanX, scale: fanScale, rotate: fanTilt }}
-        >
-          <OrbitFan ready={ready} />
-        </motion.div>
-
         {/* stage text — season slogan · headline · exactly two actions */}
         <motion.div
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center"
-          style={{ opacity: textFade, y: textLift }}
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center"
+          style={{ opacity: textFade, y: textLift, filter: textBlur }}
         >
           <motion.p
             initial={{ opacity: 0 }}
@@ -203,9 +251,21 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           </motion.div>
         </motion.div>
 
+        {/* the fan — rides ABOVE the text so the chain sweeps through where
+            the headline stood */}
+        <motion.div
+          className="absolute inset-0 z-20"
+          initial={{ opacity: 0 }}
+          animate={ready ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.9, delay: 0.3 }}
+          style={reduce ? { opacity: fanFadeExit } : undefined}
+        >
+          <OrbitFan ready={ready} scrollYProgress={scrollYProgress} />
+        </motion.div>
+
         {/* scroll cue — exits with the text */}
         <motion.div
-          className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 sm:block"
+          className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block"
           style={{ opacity: cueFade }}
           aria-hidden
         >

@@ -32,7 +32,7 @@ const MEGA_TILES: { name: Category; image: string }[] = [
 
 /* brand mega-menu — hover panel: category rack cards + campaign strip,
    each card deep-links to its own collection page */
-function MegaMenu() {
+function MegaMenu({ dark = false }: { dark?: boolean }) {
   const { goShop, view } = useStore()
   const [open, setOpen] = useState(false)
   const timer = useRef<number>()
@@ -57,7 +57,13 @@ function MegaMenu() {
       <button
         className={cn(
           'flex items-center gap-1 text-[13px] font-semibold transition-colors',
-          open ? 'text-espresso' : 'text-cocoa hover:text-espresso',
+          dark
+            ? open
+              ? 'text-cream'
+              : 'text-cream/70 hover:text-cream'
+            : open
+              ? 'text-espresso'
+              : 'text-cocoa hover:text-espresso',
         )}
         aria-expanded={open}
         /* mouse: hover opens, click navigates · touch: first tap opens, second navigates */
@@ -156,9 +162,36 @@ function MegaMenu() {
 
 export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
+  /* starts dark: the prerendered home page always opens over the espresso
+     hero — the effect corrects it on other pages right after mount */
+  const [overDark, setOverDark] = useState(true)
   const menuRef = useRef<HTMLDivElement>(null)
   useFocusTrap(menuRef, menuOpen)
   const { count, setCartOpen, view, goShop, queueSearchFocus } = useStore()
+
+  /* while the pinned dark hero stage is behind the nav, the pill switches to
+     dark glass — the cream pill would read as a white block on the espresso
+     canvas. Below the hero it's the warm cream glass again. */
+  useEffect(() => {
+    const measure = () => {
+      const hero = document.getElementById('top')
+      if (!hero) {
+        setOverDark(false)
+        return
+      }
+      const stageBottomPassesNav = hero.offsetTop + hero.offsetHeight - 68
+      setOverDark(window.scrollY < stageBottomPassesNav)
+    }
+    measure()
+    const raf = requestAnimationFrame(measure)
+    window.addEventListener('scroll', measure, { passive: true })
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', measure)
+      window.removeEventListener('resize', measure)
+    }
+  }, [view])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -183,11 +216,19 @@ export default function Nav() {
   return (
     <>
       <header className="sticky top-0 z-50 h-[4.25rem]">
-        {/* always the floating glass pill — over the hero, over content,
-            everywhere; the outer height never changes so every pinned
-            offset below keeps lining up */}
-        <div className="mx-3 mt-[0.44rem] flex h-[3.55rem] max-w-[62rem] items-center justify-between rounded-full border border-white/60 bg-cream/70 px-4 shadow-[0_16px_48px_-14px_rgba(50,22,6,0.35),0_2px_10px_rgba(50,22,6,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-2xl backdrop-saturate-150 transition-shadow duration-500 sm:px-6 lg:mx-auto">
+        {/* always the floating glass pill — dark glass while the hero stage
+            is behind it, cream glass once content turns light; the outer
+            height never changes so every pinned offset below lines up */}
+        <div
+          className={cn(
+            'mx-3 mt-[0.44rem] flex h-[3.55rem] max-w-[62rem] items-center justify-between rounded-full border px-4 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-500 sm:px-6 lg:mx-auto',
+            overDark
+              ? 'border-white/15 bg-espresso/55 shadow-[0_16px_48px_-14px_rgba(10,4,2,0.65),inset_0_1px_0_rgba(255,255,255,0.16)]'
+              : 'border-white/60 bg-cream/70 shadow-[0_16px_48px_-14px_rgba(50,22,6,0.35),0_2px_10px_rgba(50,22,6,0.08),inset_0_1px_0_rgba(255,255,255,0.7)]',
+          )}
+        >
           <ShopLogo
+            dark={overDark}
             href="#/shop"
             onClick={(e) => {
               e.preventDefault()
@@ -204,13 +245,19 @@ export default function Nav() {
                 goShop('new')
               }}
               className={cn(
-                'text-[13px] font-semibold transition-colors hover:text-espresso',
-                view === 'new' ? 'text-espresso underline underline-offset-8' : 'text-cocoa',
+                'text-[13px] font-semibold transition-colors',
+                overDark
+                  ? view === 'new'
+                    ? 'text-cream underline underline-offset-8'
+                    : 'text-cream/70 hover:text-cream'
+                  : view === 'new'
+                    ? 'text-espresso underline underline-offset-8'
+                    : 'text-cocoa hover:text-espresso',
               )}
             >
               New In
             </a>
-            <MegaMenu />
+            <MegaMenu dark={overDark} />
             <a
               href="#/shop/sale"
               onClick={(e) => {
@@ -218,10 +265,14 @@ export default function Nav() {
                 goShop('sale')
               }}
               className={cn(
-                'text-[13px] font-semibold transition-colors hover:text-ember',
-                view === 'sale'
-                  ? 'text-ember underline underline-offset-8'
-                  : 'text-terracotta-dark',
+                'text-[13px] font-semibold transition-colors',
+                overDark
+                  ? view === 'sale'
+                    ? 'text-claylight underline underline-offset-8'
+                    : 'text-clay hover:text-claylight'
+                  : view === 'sale'
+                    ? 'text-ember underline underline-offset-8'
+                    : 'text-terracotta-dark hover:text-ember',
               )}
             >
               Sale
@@ -231,14 +282,24 @@ export default function Nav() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={openSearch}
-              className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-espresso/15 bg-cream text-espresso transition-all hover:border-espresso/30 hover:bg-parchment"
+              className={cn(
+                'flex h-10 w-10 items-center justify-center rounded-[4px] border transition-all',
+                overDark
+                  ? 'border-cream/25 bg-white/5 text-cream hover:border-cream/40 hover:bg-white/10'
+                  : 'border-espresso/15 bg-cream text-espresso hover:border-espresso/30 hover:bg-parchment',
+              )}
               aria-label="Search the catalog"
             >
               <IconSearch className="h-4.5 w-4.5" />
             </button>
             <button
               onClick={() => setCartOpen(true)}
-              className="group relative flex h-10 items-center gap-2 rounded-[4px] border border-espresso/15 bg-cream px-4 text-[13px] font-semibold text-espresso transition-all hover:border-espresso/30 hover:bg-parchment"
+              className={cn(
+                'group relative flex h-10 items-center gap-2 rounded-[4px] border px-4 text-[13px] font-semibold transition-all',
+                overDark
+                  ? 'border-cream/25 bg-white/5 text-cream hover:border-cream/40 hover:bg-white/10'
+                  : 'border-espresso/15 bg-cream text-espresso hover:border-espresso/30 hover:bg-parchment',
+              )}
               aria-label="Open inquiry basket"
             >
               <IconBag className="h-4.5 w-4.5" />
@@ -259,7 +320,10 @@ export default function Nav() {
 
             <button
               onClick={() => setMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-espresso/15 text-espresso lg:hidden"
+              className={cn(
+                'flex h-10 w-10 items-center justify-center rounded-[4px] border lg:hidden',
+                overDark ? 'border-cream/25 text-cream' : 'border-espresso/15 text-espresso',
+              )}
               aria-label="Open menu"
             >
               <IconMenu className="h-5 w-5" />
