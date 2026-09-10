@@ -73,7 +73,7 @@ const ORBIT_SPEED = 0.00016
    follows one by one in the ring's travel direction */
 const chainRank = (i: number) => {
   const a = (360 / COUNT) * i
-  return Math.round((((90 - a) % 360) + 360) % 360 / (360 / COUNT))
+  return Math.round((((a - 90) % 360) + 360) % 360 / (360 / COUNT))
 }
 
 interface StageDims {
@@ -92,8 +92,8 @@ function useStageDims(): StageDims {
   useEffect(() => {
     const measure = () =>
       setDims({
-        rx: Math.max(150, Math.min(window.innerWidth * 0.4, 470)),
-        ry: Math.max(150, Math.min(window.innerHeight * 0.29, 265)),
+        rx: Math.max(150, Math.min(window.innerWidth * 0.34, 430)),
+        ry: Math.max(170, Math.min(window.innerHeight * 0.38, 330)),
         tx: window.innerWidth * 0.64,
         ty: window.innerHeight * 0.6,
       })
@@ -124,7 +124,7 @@ function OrbitFan({
   }, [scrollYProgress])
 
   useAnimationFrame((_, delta) => {
-    if (!reduce) sim.current.t += delta * ORBIT_SPEED
+    if (!reduce) sim.current.t -= delta * ORBIT_SPEED
     for (let i = 0; i < COUNT; i++) {
       const el = items.current[i]
       if (!el) continue
@@ -149,7 +149,7 @@ function OrbitFan({
           ref={(el) => {
             items.current[i] = el
           }}
-          className="absolute left-1/2 top-1/2 -ml-[2.5rem] -mt-[3.5rem] h-[7rem] w-[5rem] sm:-ml-[3.25rem] sm:-mt-[4.5rem] sm:h-[9rem] sm:w-[6.5rem] lg:-ml-[3.75rem] lg:-mt-[5rem] lg:h-[10rem] lg:w-[7.5rem]"
+          className="absolute left-1/2 top-[46%] -ml-[2.5rem] -mt-[3.5rem] h-[7rem] w-[5rem] sm:-ml-[3.25rem] sm:-mt-[4.5rem] sm:h-[9rem] sm:w-[6.5rem] lg:-ml-[3.75rem] lg:-mt-[5rem] lg:h-[10rem] lg:w-[7.5rem]"
         >
           <motion.div
             className="h-full w-full overflow-hidden rounded-2xl border border-cream/25 shadow-soft"
@@ -190,7 +190,9 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
     <section
       id="top"
       ref={ref}
-      className="relative h-[178svh] bg-espresso"
+      /* pulled up under the floating header — the espresso canvas reaches the
+         very top of the document, so nothing pale peeks behind the pill */
+      className="relative -mt-[4.25rem] h-[calc(178svh+4.25rem)] bg-espresso"
     >
       {/* pinned for the whole scroll */}
       <div className="sticky top-0 h-[100svh] overflow-hidden">
