@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion'
 import { Marquee } from '../components/Sections'
 import {
   CampaignHero,
   CategoryTiles,
   CraftSplit,
   EditorialBanner,
+  LeadIn,
   LookbookStrip,
   NewArrivalsRail,
   Newsletter,
@@ -13,15 +13,20 @@ import {
 } from '../components/Storefront'
 import { usePendingAnchorScroll, useStore } from '../store/StoreContext'
 import CollectionPage from './CollectionPage'
+import ProductPage from './ProductPage'
 
-/* ── Page 1 · The Shop — Marigold & Clay, a working demo storefront ──
-   'home' renders the campaign storefront; every other view renders a
-   full collection page (New / Sale / Shop All / each category rack). */
+/* ── The Shop — Marigold & Clay storefront ───────────────────────────
+   home      → campaign storefront
+   other view→ full collection page (New / Sale / Shop All / a rack)
+   product   → a full product detail page, Shopify-style with its own URL
+   The wrapper is intentionally a plain div: it must never sit invisible
+   while a mount animation runs, so content is always shown on navigation. */
 
-function HomeSections() {
+function HomeSections({ ready }: { ready: boolean }) {
   return (
     <>
-      <CampaignHero />
+      <CampaignHero ready={ready} />
+      <LeadIn />
       <Marquee />
       <CategoryTiles />
       <NewArrivalsRail />
@@ -35,19 +40,23 @@ function HomeSections() {
   )
 }
 
-export default function StorePage() {
+export default function StorePage({ ready = true }: { ready?: boolean }) {
   usePendingAnchorScroll()
-  const { route } = useStore()
-  const view = route.page === 'shop' ? route.view : 'home'
+  const { route, view, product } = useStore()
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, transition: { duration: 0.16 } }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {view === 'home' ? <HomeSections /> : <CollectionPage view={view} />}
-    </motion.div>
+    <div>
+      {route.kind === 'product' ? (
+        product ? (
+          <ProductPage product={product} />
+        ) : (
+          <CollectionPage view="all" />
+        )
+      ) : view === 'home' ? (
+        <HomeSections ready={ready} />
+      ) : (
+        <CollectionPage view={view!} />
+      )}
+    </div>
   )
 }

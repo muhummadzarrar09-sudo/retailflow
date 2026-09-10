@@ -245,6 +245,20 @@ function CollectionsNav({
 
 /* ── Collection page ───────────────────────────────────────────────── */
 
+/* skeleton card — mirrors the product card's geometry for filler loading */
+
+function SkeletonCard() {
+  return (
+    <div aria-hidden>
+      <div className="skeleton aspect-[4/5] w-full rounded-3xl" />
+      <div className="mt-3.5 space-y-2 px-0.5">
+        <div className="skeleton h-3.5 w-3/4 rounded-full" />
+        <div className="skeleton h-3 w-2/5 rounded-full" />
+      </div>
+    </div>
+  )
+}
+
 export default function CollectionPage({ view }: { view: CollectionView }) {
   const { goShop, searchTick, consumeSearchFocus } = useStore()
   usePendingAnchorScroll()
@@ -257,6 +271,21 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
   const [colors, setColors] = useState<string[]>([])
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const firstPass = useRef(true)
+
+  /* brief skeleton shimmer whenever the result set is re-queried —
+     natural-ui filler loading, never the intro curtain; the page's own
+     first render skips it because mount already feels instant */
+  useEffect(() => {
+    if (firstPass.current) {
+      firstPass.current = false
+      return
+    }
+    setRefreshing(true)
+    const t = window.setTimeout(() => setRefreshing(false), 420)
+    return () => window.clearTimeout(t)
+  }, [sort, query, sizes, colors, maxPrice])
 
   /* nav search icon — works from any page, on first mount and re-clicks */
   useEffect(() => {
@@ -405,59 +434,10 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
-        {/* ── toolbar ── */}
-        <div className="z-20 -mx-4 border-line bg-cream/90 px-4 py-3 backdrop-blur-xl max-lg:sticky max-lg:top-[7.19rem] max-lg:border-b sm:mx-0 sm:rounded-[4px] sm:border sm:px-4 lg:sticky lg:top-[4.9rem]">
-          <div className="flex items-center gap-2.5">
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[3px] bg-parchment/80 px-3.5 py-2">
-              <IconSearch className="h-4 w-4 shrink-0 text-taupe" />
-              <input
-                id="collection-search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={`Search ${VIEW_LABEL[view].toLowerCase()}…`}
-                className="w-full min-w-0 bg-transparent text-sm font-medium outline-none placeholder:text-taupe"
-                aria-label={`Search ${VIEW_LABEL[view]}`}
-              />
-              {query && (
-                <button onClick={() => setQuery('')} aria-label="Clear search">
-                  <IconX className="h-3.5 w-3.5 text-taupe" />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="flex h-9.5 items-center gap-2 rounded-[3px] border border-line bg-cream px-4 text-[13px] font-bold text-charcoal lg:hidden"
-            >
-              <IconFilter className="h-4 w-4" />
-              Filters
-              {activeCount > 0 && (
-                <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[2px] bg-terracotta px-1 text-[10px] font-bold text-cream">
-                  {activeCount}
-                </span>
-              )}
-            </button>
-            <div className="relative">
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
-                className="h-9.5 appearance-none rounded-[3px] border border-line bg-cream pl-4 pr-9 text-[13px] font-bold text-charcoal outline-none"
-                aria-label="Sort products"
-              >
-                {SORTS.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <IconChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-taupe" />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-10 lg:grid-cols-[14.5rem_1fr]">
-          {/* ── sidebar: collections + filters ── */}
+        <div className="grid gap-x-8 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+          {/* ── sidebar: collections + filters — pinned while the grid scrolls ── */}
           <aside className="hidden lg:block">
-            <div className="sticky top-36 space-y-8">
+            <div className="thin-scroll lg:sticky lg:top-[4.9rem] lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:space-y-8 lg:pb-2 lg:pr-2">
               <CollectionsNav view={view} />
               <div className="space-y-6 rounded-3xl border border-line bg-parchment/50 p-5">
                 <div className="flex items-center justify-between">
@@ -478,49 +458,111 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
             </div>
           </aside>
 
-          {/* ── grid ── */}
-          <div>
-            <p className="mb-5 text-[13px] font-semibold text-taupe" role="status">
-              Showing <span className="text-espresso">{list.length}</span> of {rack.length}{' '}
-              {rack.length === 1 ? 'piece' : 'pieces'}
-            </p>
-
-            {list.length === 0 ? (
-              <div className="flex flex-col items-center rounded-3xl border border-dashed border-taupe/40 bg-parchment/40 px-6 py-20 text-center">
-                <IconSearch className="h-8 w-8 text-taupe" />
-                <p className="mt-4 font-display text-xl text-espresso">
-                  Nothing matches those filters.
-                </p>
-                <p className="mt-1 text-sm text-cocoa">
-                  Loosen a filter — or browse every rack in the store instead.
-                </p>
-                <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    onClick={reset}
-                    className="rounded-full bg-espresso px-5 py-2.5 text-[13px] font-bold text-cream"
+          {/* ── toolbar + product grid — search/sort stays pinned too ── */}
+          <div className="min-w-0">
+            {/* toolbar */}
+            <div className="z-20 -mx-4 border-line bg-cream/90 px-4 py-3 backdrop-blur-xl max-lg:sticky max-lg:top-[7.19rem] max-lg:border-b sm:mx-0 sm:rounded-[4px] sm:border sm:px-4 lg:sticky lg:top-[4.9rem]">
+              <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[3px] bg-parchment/80 px-3.5 py-2">
+                  <IconSearch className="h-4 w-4 shrink-0 text-taupe" />
+                  <input
+                    id="collection-search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={`Search ${VIEW_LABEL[view].toLowerCase()}…`}
+                    className="w-full min-w-0 bg-transparent text-sm font-medium outline-none placeholder:text-taupe"
+                    aria-label={`Search ${VIEW_LABEL[view]}`}
+                  />
+                  {query && (
+                    <button onClick={() => setQuery('')} aria-label="Clear search">
+                      <IconX className="h-3.5 w-3.5 text-taupe" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSheetOpen(true)}
+                  className="flex h-9.5 items-center gap-2 rounded-[3px] border border-line bg-cream px-4 text-[13px] font-bold text-charcoal lg:hidden"
+                >
+                  <IconFilter className="h-4 w-4" />
+                  Filters
+                  {activeCount > 0 && (
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[2px] bg-terracotta px-1 text-[10px] font-bold text-cream">
+                      {activeCount}
+                    </span>
+                  )}
+                </button>
+                <div className="relative">
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as SortKey)}
+                    className="h-9.5 appearance-none rounded-[3px] border border-line bg-cream pl-4 pr-9 text-[13px] font-bold text-charcoal outline-none"
+                    aria-label="Sort products"
                   >
-                    Reset filters
-                  </button>
-                  <button
-                    onClick={() => goShop('all')}
-                    className="rounded-full border border-espresso/20 px-5 py-2.5 text-[13px] font-bold text-espresso transition-colors hover:bg-parchment"
-                  >
-                    Shop everything
-                  </button>
+                    {SORTS.map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                  <IconChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-taupe" />
                 </div>
               </div>
-            ) : (
-              <motion.div
-                layout
-                className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5"
-              >
-                <AnimatePresence mode="popLayout">
-                  {list.map((p, i) => (
-                    <ProductCard key={p.id} p={p} index={i} />
+            </div>
+
+            {/* ── grid ── */}
+            <div className="mt-6">
+              {refreshing ? (
+                <div className="skeleton mb-5 h-3.5 w-44 rounded-full" aria-hidden />
+              ) : (
+                <p className="mb-5 text-[13px] font-semibold text-taupe" role="status">
+                  Showing <span className="text-espresso">{list.length}</span> of {rack.length}{' '}
+                  {rack.length === 1 ? 'piece' : 'pieces'}
+                </p>
+              )}
+
+              {refreshing ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5" aria-busy>
+                  {Array.from({ length: Math.min(Math.max(list.length, 6), 9) }).map((_, i) => (
+                    <SkeletonCard key={i} />
                   ))}
-                </AnimatePresence>
-              </motion.div>
-            )}
+                </div>
+              ) : list.length === 0 ? (
+                <div className="flex flex-col items-center rounded-3xl border border-dashed border-taupe/40 bg-parchment/40 px-6 py-20 text-center">
+                  <IconSearch className="h-8 w-8 text-taupe" />
+                  <p className="mt-4 font-display text-xl text-espresso">
+                    Nothing matches those filters.
+                  </p>
+                  <p className="mt-1 text-sm text-cocoa">
+                    Loosen a filter — or browse every rack in the store instead.
+                  </p>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      onClick={reset}
+                      className="rounded-full bg-espresso px-5 py-2.5 text-[13px] font-bold text-cream"
+                    >
+                      Reset filters
+                    </button>
+                    <button
+                      onClick={() => goShop('all')}
+                      className="rounded-full border border-espresso/20 px-5 py-2.5 text-[13px] font-bold text-espresso transition-colors hover:bg-parchment"
+                    >
+                      Shop everything
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <motion.div
+                  layout
+                  className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {list.map((p, i) => (
+                      <ProductCard key={p.id} p={p} index={i} />
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
       </div>

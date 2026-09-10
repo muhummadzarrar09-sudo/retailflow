@@ -1,5 +1,5 @@
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { motion, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import { priceOf, products, type Category, type Product } from '../data/products'
 import { useStore } from '../store/StoreContext'
 import { MSG_SHOP, rs, waLink } from '../utils/helpers'
@@ -17,70 +17,23 @@ import { ProductCard } from './ProductCard'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
-/* ── Announcement ribbon — honest demo framing, bridges the two pages ─ */
-
-export function Ribbon() {
-  const { route, goShop, goOwners } = useStore()
-
-  if (route.page === 'owners') {
-    return (
-      <div className="bg-espresso text-cream">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-          <span className="hidden text-[10px] font-bold uppercase tracking-mega text-clay sm:inline">
-            Platform demo
-          </span>
-          <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
-            This is the platform behind the Marigold &amp; Clay demo — here's what your shop gets.
-          </p>
-          <a
-            href="#/shop"
-            onClick={(e) => {
-              e.preventDefault()
-              goShop()
-            }}
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-bold underline-offset-2 hover:underline sm:text-[12px]"
-          >
-            ← Back to the storefront
-          </a>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-terracotta text-cream">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-        <span className="hidden text-[10px] font-bold uppercase tracking-mega sm:inline">
-          Live demo
-        </span>
-        <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
-          This storefront is a working demo — every button, filter and inquiry is live.
-        </p>
-        <a
-          href="#/owners"
-          onClick={(e) => {
-            e.preventDefault()
-            goOwners()
-          }}
-          className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-bold underline-offset-2 hover:underline sm:text-[12px]"
-        >
-          Want one for your shop?
-          <IconArrowRight className="h-3 w-3" />
-        </a>
-      </div>
-    </div>
-  )
-}
-
 /* ── masked-line headline reveal (brand campaign style) ────────────── */
 
-function MaskedLine({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function MaskedLine({
+  children,
+  delay = 0,
+  play = true,
+}: {
+  children: React.ReactNode
+  delay?: number
+  play?: boolean
+}) {
   return (
     <span className="block overflow-hidden pb-[0.08em]">
       <motion.span
         className="block"
         initial={{ y: '112%' }}
-        animate={{ y: '0%' }}
+        animate={play ? { y: '0%' } : { y: '112%' }}
         transition={{ duration: 0.9, delay, ease }}
       >
         {children}
@@ -89,143 +42,202 @@ function MaskedLine({ children, delay = 0 }: { children: React.ReactNode; delay?
   )
 }
 
-/* ── Campaign hero — full-bleed editorial with parallax ────────────── */
+/* ── Campaign hero — the landing stage ───────────────────────────────
+   A background slideshow of the new/featured picks woven with the
+   campaign stills, over solid espresso with text-safe scrims. The stage
+   is pinned: the headline and the two actions dissolve into the backdrop
+   on scroll, the show keeps running, then the store continues below. */
 
-export function CampaignHero() {
-  const { goShop, openProduct } = useStore()
+const HERO_SLIDES: { src: string; alt: string }[] = (() => {
+  const picks = products.filter((p) => p.isNew || p.featured)
+  const campaign = [
+    'campaign-hero',
+    'campaign-craft',
+    'campaign-sale',
+    'campaign-flatlay',
+    'campaign-look',
+  ]
+  const slides: { src: string; alt: string }[] = []
+  for (let i = 0; i < Math.max(picks.length, campaign.length); i++) {
+    if (i < picks.length) slides.push({ src: picks[i].image, alt: picks[i].name })
+    if (i < campaign.length)
+      slides.push({ src: `/products/${campaign[i]}.jpg`, alt: 'Marigold & Clay campaign still' })
+  }
+  return slides
+})()
+
+const SLIDE_MS = 4500
+const SLIDE_FADE = 1.05
+
+function HeroSlideshow({ ready }: { ready: boolean }) {
+  const reduce = useReducedMotion()
+  const [idx, setIdx] = useState(0)
+
+  // advance only after the curtain lifts; reduced motion = a single still
+  useEffect(() => {
+    if (reduce || !ready) return
+    if (HERO_SLIDES.length < 2) return
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % HERO_SLIDES.length), SLIDE_MS)
+    return () => window.clearInterval(t)
+  }, [reduce, ready])
+
+  return (
+    <div aria-hidden className="absolute inset-0">
+      {HERO_SLIDES.map((slide, i) => (
+        <motion.div
+          key={slide.src}
+          className="absolute inset-0"
+          initial={false}
+          animate={{ opacity: i === idx ? 1 : 0 }}
+          transition={{ duration: SLIDE_FADE, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <img
+            src={slide.src}
+            alt=""
+            loading={i === 0 ? 'eager' : 'lazy'}
+            draggable={false}
+            className="h-full w-full object-cover object-center"
+          />
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+export function CampaignHero({ ready = true }: { ready?: boolean }) {
+  const { goShop } = useStore()
   const reduce = useReducedMotion()
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '18%'])
-  const scale = useTransform(scrollYProgress, [0, 1], [1.02, 1.12])
-  const fade = useTransform(scrollYProgress, [0, 0.75], [1, 0])
-  const hero = products[1] // Embroidered 2-Piece Suit
+
+  // the text dissolves into the backdrop first — blur, lift, fade
+  const textFade = useTransform(scrollYProgress, [0, 0.32], [1, 0])
+  const textLift = useTransform(scrollYProgress, [0, 0.36], ['0rem', '-3.5rem'])
+  const textBlur = useTransform(scrollYProgress, [0, 0.34], ['blur(0px)', 'blur(12px)'])
 
   return (
     <section
       id="top"
       ref={ref}
-      className="relative flex min-h-[calc(100svh-4.25rem)] items-end overflow-hidden bg-espresso"
+      /* pulled up under the floating header — the canvas reaches the very
+         top of the document, so nothing pale peeks behind the pill */
+      className="relative -mt-[4.25rem] h-[calc(135svh+4.25rem)] bg-espresso"
     >
-      {/* campaign image with parallax drift */}
-      <motion.div
-        aria-hidden
-        className="absolute inset-0"
-        style={reduce ? undefined : { y, scale }}
-      >
-        <img
-          src="/products/campaign-hero.jpg"
-          alt=""
-          className="h-full w-full object-cover object-[72%_center]"
+      {/* pinned stage */}
+      <div className="sticky top-0 h-[100svh] overflow-hidden">
+        <HeroSlideshow ready={ready} />
+
+        {/* owner spec — the photo stays bright, no flat overlay:
+            a radial pool lives ONLY behind the text block, and the bottom
+            third carries a scrim for the action row; the top of every
+            slide stays clean and undarkened */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 70%)',
+          }}
         />
-      </motion.div>
-      {/* scrims — text side + bottom */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-r from-espresso/65 via-espresso/25 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-espresso/70 via-espresso/20 to-transparent"
-      />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(0deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.26) 16%, rgba(0,0,0,0) 34%)',
+          }}
+        />
 
-      {/* season tag */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.5 }}
-        className="absolute left-4 top-6 text-[10px] font-bold uppercase tracking-mega text-cream/70 sm:left-6 lg:left-8"
-      >
-        Marigold &amp; Clay · Season 04 — Rawalpindi
-      </motion.p>
-
-      {/* copy block */}
-      <motion.div
-        className="relative mx-auto w-full max-w-7xl px-4 pb-24 pt-28 sm:px-6 lg:px-8 lg:pb-28"
-        style={reduce ? undefined : { opacity: fade }}
-      >
-        <h1 className="max-w-2xl font-display text-[13vw] font-medium leading-[0.98] tracking-tight text-cream sm:text-7xl lg:text-[5.2rem]">
-          <MaskedLine delay={0.35}>Dress like the</MaskedLine>
-          <MaskedLine delay={0.47}>
-            <span className="italic text-claylight">season</span> feels.
-          </MaskedLine>
-        </h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.72, ease }}
-          className="mt-5 max-w-md text-sm leading-relaxed text-cream/80 sm:text-base"
-        >
-          Embroidered lawn, soft cotton and hand-finished goods — curated in Rawalpindi.
-          Browse the racks, then order in one clean WhatsApp message.
-        </motion.p>
-
+        {/* stage text — season slogan · headline · exactly two actions */}
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.86, ease }}
-          className="mt-8 flex flex-wrap items-center gap-3"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center"
+          style={{ opacity: textFade, y: textLift, filter: textBlur }}
         >
-          <button
-            onClick={() => goShop('sale')}
-            className="group flex h-12 items-center gap-2 rounded-full bg-cream px-6 text-sm font-bold text-espresso shadow-pop transition-all hover:bg-sand active:scale-[0.98]"
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={ready ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.8, delay: 0.42 }}
+            className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-mega text-[#F5E9DC]/80"
+            style={{ textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.4)' }}
           >
-            Shop the Edit
-            <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
-          <button
-            onClick={() => goShop('new')}
-            className="flex h-12 items-center gap-2 rounded-full border border-cream/35 px-6 text-sm font-bold text-cream backdrop-blur transition-all hover:bg-cream/10 active:scale-[0.98]"
+            <span className="h-px w-6 bg-clay/80" aria-hidden />
+            Marigold &amp; Clay · Season 04 — Rawalpindi
+            <span className="h-px w-6 bg-clay/80" aria-hidden />
+          </motion.p>
+
+          <h1
+            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-[#F5E9DC] sm:text-6xl lg:text-[4.6rem]"
+            style={{ textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.4)' }}
           >
-            New In
-          </button>
+            <MaskedLine delay={0.52} play={ready}>
+              Dress like the
+            </MaskedLine>
+            <MaskedLine delay={0.64} play={ready}>
+              <span className="italic text-claylight">season</span> feels.
+            </MaskedLine>
+          </h1>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
+            transition={{ duration: 0.8, delay: 0.95, ease }}
+            className="mt-9 flex flex-wrap items-center justify-center gap-3"
+          >
+            <button
+              onClick={() => goShop('all')}
+              className="group flex h-12 items-center gap-2 rounded-full bg-cream px-7 text-sm font-bold text-espresso shadow-pop transition-all hover:bg-sand active:scale-[0.98]"
+            >
+              Enter the Store
+              <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+            <button
+              onClick={() => goShop('sale')}
+              className="flex h-12 items-center gap-2 rounded-full bg-terracotta px-7 text-sm font-bold text-cream shadow-[0_4px_20px_rgba(0,0,0,0.25)] transition-all hover:bg-terracotta-dark active:scale-[0.98]"
+            >
+              The Autumn Edit
+            </button>
+          </motion.div>
         </motion.div>
-      </motion.div>
 
-      {/* shoppable hero chip — desktop */}
-      <motion.button
-        initial={{ opacity: 0, y: 26 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.85, delay: 1.05, ease }}
-        onClick={() => openProduct(hero)}
-        className="group absolute bottom-8 right-8 hidden w-64 items-center gap-3 overflow-hidden rounded-[4px] border-l-2 border-terracotta bg-espresso p-3.5 text-left shadow-soft transition-colors hover:bg-charcoal lg:flex"
-      >
-        <img
-          src={hero.image}
-          alt={hero.name}
-          className="h-16 w-16 rounded-[2px] object-cover"
-          loading="eager"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[9px] font-bold uppercase tracking-mega text-clay">
-            As worn — quick view
-          </span>
-          <span className="mt-0.5 block truncate text-[13px] font-bold text-cream">
-            {hero.name}
-          </span>
-          <span className="text-[12px] font-semibold text-cream/70">{rs(priceOf(hero))}</span>
-        </span>
-        <IconArrowRight className="h-4 w-4 shrink-0 text-cream/60 transition-transform group-hover:translate-x-0.5" />
-      </motion.button>
-
-      {/* scroll cue */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.4, duration: 0.7 }}
-        className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 sm:flex"
-        aria-hidden
-      >
-        <span className="text-[9px] font-bold uppercase tracking-mega text-cream/55">Scroll</span>
-        <motion.span
-          animate={reduce ? undefined : { y: [0, 6, 0] }}
-          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-cream/30 text-cream/70"
+        {/* scroll cue — exits with the text */}
+        <motion.div
+          className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block"
+          style={{ opacity: textFade }}
+          aria-hidden
         >
-          <IconChevronDown className="h-4 w-4" />
-        </motion.span>
-      </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={ready ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ delay: 1.5, duration: 0.7 }}
+          >
+            <motion.span
+              animate={reduce ? undefined : { y: [0, 6, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-cream/30 text-cream/70"
+            >
+              <IconChevronDown className="h-4 w-4" />
+            </motion.span>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+/* ── lead-in — the hero's promise lands just past the fold ─────────── */
+
+export function LeadIn() {
+  return (
+    <section className="border-b border-line bg-parchment/60">
+      <div className="mx-auto max-w-3xl px-4 py-12 text-center sm:py-14">
+        <Reveal>
+          <p className="text-[11px] font-bold uppercase tracking-mega text-taupe">The Promise</p>
+          <p className="mt-4 font-display text-2xl font-light italic leading-snug text-espresso sm:text-3xl">
+            “Embroidered lawn, soft cotton and hand-finished goods — curated in Rawalpindi.
+            Browse the racks, then order in one clean WhatsApp message.”
+          </p>
+        </Reveal>
+      </div>
     </section>
   )
 }
@@ -377,6 +389,91 @@ export function NewArrivalsRail() {
   )
 }
 
+/* ── Craft stats ─────────────────────────────────────────────────────
+   Numbers are derived from the live catalog so they can never drift
+   from reality, and they count up once they scroll into view. */
+
+function useCountUp(target: number, duration = 1400) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-40px' })
+  const reduce = useReducedMotion()
+  const [n, setN] = useState(0)
+
+  useEffect(() => {
+    if (!inView) return
+    if (reduce) {
+      setN(target)
+      return
+    }
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration)
+      setN(Math.round(target * (1 - Math.pow(1 - p, 3)))) // ease-out cubic
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView, target, duration, reduce])
+
+  // reduced-motion users get the final figure immediately, no ticking
+  return { ref, value: reduce && !inView ? target : n }
+}
+
+function StatNumber({ target }: { target: number }) {
+  const { ref, value } = useCountUp(target)
+  return (
+    <span ref={ref} className="tabular-nums">
+      {value}
+    </span>
+  )
+}
+
+export function CraftStats() {
+  const totalPieces = products.length
+  const rackCount = new Set(products.map((p) => p.category)).size
+
+  const stats: { idx: string; label: string; hint: string; target?: number; text?: string }[] = [
+    {
+      idx: '01',
+      target: totalPieces,
+      label: 'Curated pieces',
+      hint: 'Each one inspected on the table before it reaches the rail.',
+    },
+    {
+      idx: '02',
+      target: rackCount,
+      label: 'Category racks',
+      hint: 'Clothing rail to gift shelf — six ways into the store.',
+    },
+    {
+      idx: '03',
+      text: '24–48h',
+      label: 'Dispatch window',
+      hint: 'Packed once your order is confirmed in chat.',
+    },
+  ]
+
+  return (
+    <dl className="mt-10 grid divide-y divide-line overflow-hidden rounded-2xl border border-line bg-parchment/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {stats.map((s) => (
+        <div key={s.idx} className="flex flex-col px-5 py-5 sm:px-6 sm:py-6">
+          <span className="font-display text-[12px] font-semibold italic text-terracotta">
+            {s.idx}
+          </span>
+          <dt className="order-3 mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-taupe">
+            {s.label}
+          </dt>
+          <dd className="order-2 mt-2.5 font-display text-4xl font-semibold tracking-tight text-espresso">
+            {s.target != null ? <StatNumber target={s.target} /> : s.text}
+          </dd>
+          <p className="order-4 mt-2 text-[12px] leading-relaxed text-cocoa/75">{s.hint}</p>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /* ── The craft — heritage split editorial ──────────────────────────── */
 
 export function CraftSplit() {
@@ -417,22 +514,7 @@ export function CraftSplit() {
           </Reveal>
 
           <Reveal delay={0.1}>
-            <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-line pt-8">
-              {[
-                ['25', 'curated products'],
-                ['6', 'category racks'],
-                ['24–48h', 'dispatch window'],
-              ].map(([v, k]) => (
-                <div key={k}>
-                  <dt className="font-display text-3xl font-semibold tracking-tight text-espresso sm:text-4xl">
-                    {v}
-                  </dt>
-                  <dd className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-taupe">
-                    {k}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <CraftStats />
           </Reveal>
 
           <Reveal delay={0.16}>

@@ -10,19 +10,19 @@ import {
 } from 'react'
 import { priceOf, products, type Category, type Product } from '../data/products'
 
-/* ── Client-side hash routing — brand-style, one URL per page ────────
-   #/shop                    → Home (campaign storefront)
-   #/shop/new                → New Arrivals
-   #/shop/all                → Shop All
-   #/shop/sale               → The Sale
+/* ── Client-side hash routing — one URL per page ───────────────────
+   #/shop                        → Home (campaign storefront)
+   #/shop/new · /all · /sale     → New Arrivals · Shop All · The Sale
    #/shop/clothing|accessories|footwear|stationery|cosmetics|gifts
-                             → category collection pages
-   #/owners                  → the RetailFlow platform page
-   Plain anchor hashes (e.g. #pricing) and #product-<slug> deep links
-   are NOT routes — they never flip the active page. */
+                                → category collection pages
+   #/shop/product/<slug>         → a full product detail page
+   Plain anchor hashes (e.g. #policies) and legacy #product-<slug>
+   deep links are NOT the URL form we steer users to. */
 
 export type ShopView = 'home' | 'new' | 'sale' | 'all' | Category
-export type Route = { page: 'shop'; view: ShopView } | { page: 'owners' }
+export type ShopRoute =
+  | { kind: 'shop'; view: ShopView }
+  | { kind: 'product'; slug: string }
 
 export const CATEGORIES: Category[] = [
   'Clothing',
@@ -71,21 +71,23 @@ export const VIEW_LABEL: Record<ShopView, string> = {
   Gifts: 'Gifts',
 }
 
-const routeFromHash = (): Route | null => {
-  const h = window.location.hash
-  if (h.startsWith('#/owners')) return { page: 'owners' }
-  if (h === '#/' || h.startsWith('#/shop')) {
-    const seg = h.replace(/^#\//, '').split('/')[1]?.toLowerCase() ?? ''
-    return { page: 'shop', view: SLUG_VIEW[seg] ?? 'home' }
-  }
-  return null
-}
+export const productPath = (slug: string) => `#/shop/product/${slug}`
 
-const sameRoute = (a: Route, b: Route): boolean => {
-  if (a.page !== b.page) return false
-  if (a.page === 'owners' && b.page === 'owners') return true
-  if (a.page === 'shop' && b.page === 'shop') return a.view === b.view
-  return false
+/* the active route lives purely in the hash — unknown/empty hashes fall
+   back to the storefront home so nothing ever 404s. On the server there is
+   no URL, so the prerender always paints the home page; the client then
+   hydrates it only when the real hash agrees (see main.tsx). */
+export const shopRouteFromHash = (): ShopRoute => {
+  if (typeof window === 'undefined') return { kind: 'shop', view: 'home' }
+  const h = window.location.hash
+  if (h.startsWith('#/shop')) {
+    const parts = h.slice(1).split('/').filter(Boolean) // ['shop', ...]
+    if (parts[1] === 'product' && parts[2]) return { kind: 'product', slug: parts[2] }
+    const v = SLUG_VIEW[parts[1]?.toLowerCase() ?? ''] ?? 'home'
+    return { kind: 'shop', view: v }
+  }
+  // bare '#', '#/', or any non-route hash (anchors, legacy #product-<slug>)
+  return { kind: 'shop', view: 'home' }
 }
 
 export interface CartLine {
@@ -114,12 +116,13 @@ interface StoreValue {
   clear: () => void
   cartOpen: boolean
   setCartOpen: (open: boolean) => void
-  active: Product | null
+  route: ShopRoute
+  /** active collection view when browsing, else null on a product page */
+  view: ShopView | null
+  /** the product being viewed on a product page, else null */
+  product: Product | null
   openProduct: (p: Product) => void
-  closeProduct: () => void
-  route: Route
   goShop: (view?: ShopView, anchor?: string) => void
-  goOwners: (anchor?: string) => void
   scrollToAnchor: (id: string, smooth?: boolean) => void
   consumePendingAnchor: () => string | null
   queueSearchFocus: () => void
@@ -150,25 +153,35 @@ const scrollTop = (smooth: boolean) => {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>(loadLines)
+  /* start empty so server HTML and the first client render match byte-for-
+     byte; the persisted basket is restored in an effect right after mount */
+  const [lines, setLines] = useState<CartLine[]>([])
+  const [hydratedCart, setHydratedCart] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
-  const [active, setActive] = useState<Product | null>(null)
-  const [route, setRoute] = useState<Route>(() => routeFromHash() ?? { page: 'shop', view: 'home' })
+  const [route, setRoute] = useState<ShopRoute>(() => shopRouteFromHash())
   const pendingAnchor = useRef<string | null>(null)
 
   useEffect(() => {
+    setLines(loadLines())
+    setHydratedCart(true)
+  }, [])
+
+  useEffect(() => {
+    // persist only after the restore above has committed — never overwrite a
+    // saved basket with the empty server-rendered state
+    if (!hydratedCart) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
     } catch {
       /* storage unavailable — session-only cart */
     }
-  }, [lines])
+  }, [lines, hydratedCart])
 
-  /* back/forward buttons + direct hash edits drive the active page */
+  /* back/forward buttons + direct hash edits drive the active route */
   useEffect(() => {
     const onHash = () => {
-      const r = routeFromHash()
-      if (r) setRoute((prev) => (sameRoute(prev, r) ? prev : r))
+      const r = shopRouteFromHash()
+      setRoute((prev) => (JSON.stringify(prev) === JSON.stringify(r) ? prev : r))
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
@@ -199,9 +212,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const clear = useCallback(() => setLines([]), [])
 
-  const openProduct = useCallback((p: Product) => setActive(p), [])
-  const closeProduct = useCallback(() => setActive(null), [])
-
   const scrollToAnchor = useCallback((id: string, smooth = true) => {
     const el = document.getElementById(id)
     if (!el) return
@@ -209,40 +219,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     el.scrollIntoView({ behavior: smooth && !reduced ? 'smooth' : 'auto', block: 'start' })
   }, [])
 
-  const navigate = useCallback((r: Route) => {
-    setRoute((prev) => (sameRoute(prev, r) ? prev : r))
-    const hash = r.page === 'owners' ? '#/owners' : VIEW_PATH[r.view]
+  const pushRoute = useCallback((next: ShopRoute) => {
+    setRoute((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+    const hash =
+      next.kind === 'product'
+        ? productPath(next.slug)
+        : VIEW_PATH[next.view]
     if (window.location.hash !== hash) window.location.hash = hash
   }, [])
+
+  /* open a product's full detail page */
+  const openProduct = useCallback((p: Product) => pushRoute({ kind: 'product', slug: p.slug }), [pushRoute])
 
   /* go to a storefront page — home, a collection, or a category rack —
      optionally landing on a specific section of that page */
   const goShop = useCallback(
-    (view: ShopView = 'home', anchor?: string) => {
-      const target: Route = { page: 'shop', view }
-      if (sameRoute(route, target)) {
-        if (anchor) scrollToAnchor(anchor)
-        else if (!anchor) scrollTop(true)
-        return
-      }
-      pendingAnchor.current = anchor ?? null
-      navigate(target)
-    },
-    [route, navigate, scrollToAnchor],
-  )
-
-  /* go to the For-Shop-Owners page — optionally landing on a section */
-  const goOwners = useCallback(
-    (anchor?: string) => {
-      if (route.page === 'owners') {
+    (target: ShopView = 'home', anchor?: string) => {
+      const onCollection = route.kind === 'shop' && route.view === target
+      if (onCollection) {
         if (anchor) scrollToAnchor(anchor)
         else scrollTop(true)
         return
       }
       pendingAnchor.current = anchor ?? null
-      navigate({ page: 'owners' })
+      pushRoute({ kind: 'shop', view: target })
     },
-    [route, navigate, scrollToAnchor],
+    [route, pushRoute, scrollToAnchor],
   )
 
   const consumePendingAnchor = useCallback(() => {
@@ -252,8 +254,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /* nav search icon → lands on Shop All with the cursor already in the
-     field, even when arriving from the owners page (or re-triggered on
-     the same page — the tick forces the consumer effect to re-run) */
+     field, even when re-triggered on the same page (the tick forces the
+     consumer effect to re-run) */
   const searchFlag = useRef(false)
   const [searchTick, setSearchTick] = useState(0)
   const queueSearchFocus = useCallback(() => {
@@ -277,6 +279,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [lines],
   )
 
+  const product =
+    route.kind === 'product'
+      ? (products.find((p) => p.slug === route.slug) ?? null)
+      : null
+
+  const view: ShopView | null = route.kind === 'shop' ? route.view : null
+
   const value = useMemo<StoreValue>(
     () => ({
       lines,
@@ -289,12 +298,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clear,
       cartOpen,
       setCartOpen,
-      active,
-      openProduct,
-      closeProduct,
       route,
+      view,
+      product,
+      openProduct,
       goShop,
-      goOwners,
       scrollToAnchor,
       consumePendingAnchor,
       queueSearchFocus,
@@ -305,17 +313,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lines,
       resolved,
       cartOpen,
-      active,
       route,
+      view,
+      product,
       searchTick,
       add,
       remove,
       setQty,
       clear,
       openProduct,
-      closeProduct,
       goShop,
-      goOwners,
       scrollToAnchor,
       consumePendingAnchor,
       queueSearchFocus,

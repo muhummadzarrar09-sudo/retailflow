@@ -5,9 +5,10 @@
   "type": "module",
   "description": "RetailFlow — premium catalog + WhatsApp ordering system. Demo built by Zarrar.Solutions",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server.js",
+    "dev:spa": "vite",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/prerender.mjs",
     "build:preview": "npm run build && node scripts/build-preview.mjs",
     "preview": "vite preview"
   },

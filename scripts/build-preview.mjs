@@ -31,10 +31,18 @@ for (const file of readdirSync(productsDir)) {
   const type = mime[ext]
   if (!type) continue
   const data = `data:${type};base64,${readFileSync(join(productsDir, file)).toString('base64')}`
-  const needle = `/products/${file}`
-  if (js.includes(needle)) {
-    js = js.split(needle).join(data)
-    inlined++
+  //Vite rewrites absolute head links to "./products/…" in the built HTML —
+  // swap the longer, dotted needle first so nothing survives as ".data:…"
+  for (const needle of [`./products/${file}`, `/products/${file}`]) {
+    if (js.includes(needle)) {
+      js = js.split(needle).join(data)
+      inlined++
+    }
+    // the prerendered markup (and its preload hint) reference the same files
+    if (html.includes(needle)) {
+      html = html.split(needle).join(data)
+      inlined++
+    }
   }
 }
 // Escape closing script tags just in case, then inline as a module
@@ -43,6 +51,35 @@ html = html.replace(
   /<script type="module"[^>]*><\/script>/,
   () => `<script type="module">\n${js}\n</script>`,
 )
+
+const svgData = (buf) => `data:image/svg+xml,${encodeURIComponent(buf.toString('utf8')).replace(/'/g, '%27')}`
+
+// 3 · inline the brand assets (favicon/apple-touch-icon) so the standalone
+// file keeps the logo mark even when opened from disk with no server
+for (const [needle, file, toData] of [
+  ['/brand/favicon.svg', join(root, 'public', 'brand', 'favicon.svg'), svgData],
+  ['/brand/logo.svg', join(root, 'public', 'brand', 'logo.svg'), svgData],
+  ['/brand/logo-mark.svg', join(root, 'public', 'brand', 'logo-mark.svg'), svgData],
+  [
+    '/brand/favicon-192.png',
+    join(root, 'public', 'brand', 'favicon-192.png'),
+    (buf) => `data:image/png;base64,${buf.toString('base64')}`,
+  ],
+  [
+    '/brand/logo-bloom.png',
+    join(root, 'public', 'brand', 'logo-bloom.png'),
+    (buf) => `data:image/png;base64,${buf.toString('base64')}`,
+  ],
+]) {
+  let buf
+  try {
+    buf = readFileSync(file)
+  } catch {
+    continue
+  }
+  const data = toData(buf)
+  for (const variant of [`.${needle}`, needle]) html = html.split(variant).join(data)
+}
 
 const out = join(root, 'preview.html')
 writeFileSync(out, html)

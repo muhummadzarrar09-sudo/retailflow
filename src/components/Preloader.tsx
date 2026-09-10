@@ -5,7 +5,7 @@ import { lockScroll, unlockScroll } from '../utils/scrollLock'
 const CURTAIN_EASE = [0.76, 0, 0.24, 1] as const
 const TITLE = 'Marigold & Clay'
 /* the closed-silk act gets room to breathe; the part begins at PART_MS */
-const PART_MS = 2750
+const PART_MS = 2350
 
 /* ── stitched seam that draws itself, then petals bloom ─────────────── */
 
@@ -15,13 +15,38 @@ function StitchedMark() {
   // full-circle path the needle travels (two arcs, clockwise from the top)
   const needlePath = 'M60 8 A52 52 0 1 1 60 112 A52 52 0 1 1 60 8'
   return (
-    <motion.svg
-      viewBox="0 0 120 120"
-      className="h-20 w-20 sm:h-24 sm:w-24"
+    <motion.div
+      className="relative h-20 w-20 sm:h-24 sm:w-24"
       initial={{ scale: 1 }}
       animate={{ scale: [1, 1, 1.035, 1] }}
       transition={{ duration: 0.6, times: [0, 0.5, 0.8, 1], delay: 1.75 }}
     >
+      {/* cream appliqué badge — springs onto the silk first… */}
+      <motion.span
+        aria-hidden
+        className="absolute inset-[17%] rounded-full bg-[#F6E7CF] shadow-[inset_0_2px_6px_rgba(60,20,5,0.14),0_1px_0_rgba(60,20,5,0.18)]"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.58, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+      />
+      {/* …then the marigold bloom appliqué opens on it — the same bloom that
+          sits in the favicon, so the brand mark you keep seeing is the AI one */}
+      <motion.img
+        src="/brand/logo-bloom.png"
+        alt=""
+        draggable={false}
+        className="absolute inset-[20%] h-[60%] w-[60%] select-none"
+        initial={{ scale: 0, opacity: 0, rotate: -24 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ delay: 0.74, duration: 0.72, ease: [0.34, 1.56, 0.64, 1] }}
+      />
+      {/* the stitched seam rides ON TOP — the dashes land like embroidery
+          around the badge's edge */}
+      <motion.svg
+        viewBox="0 0 120 120"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden
+      >
       {/* inner hairline — second thread, crawling opposite */}
       <motion.circle
         cx="60"
@@ -64,47 +89,8 @@ function StitchedMark() {
         <line x1="0" y1="0" x2="11" y2="0" stroke="#E8B98A" strokeWidth="1.8" strokeLinecap="round" />
         <animateMotion dur="1.25s" begin="0.2s" fill="freeze" rotate="auto" path={needlePath} />
       </motion.g>
-      {/* petals bloom */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <g key={i} transform={`rotate(${i * 45} 60 60)`}>
-          <motion.ellipse
-            cx="60"
-            cy="32"
-            rx="7.5"
-            ry="17"
-            fill="#F6E7CF"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{
-              delay: 0.72 + i * 0.075,
-              duration: 0.55,
-              ease: [0.34, 1.56, 0.64, 1],
-            }}
-            style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
-          />
-        </g>
-      ))}
-      <motion.circle
-        cx="60"
-        cy="60"
-        r="10.5"
-        fill="#E8B98A"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 1.25, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
-        style={{ transformOrigin: 'center' }}
-      />
-      <motion.circle
-        cx="60"
-        cy="60"
-        r="4.4"
-        fill="#8C4423"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 1.38, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-        style={{ transformOrigin: 'center' }}
-      />
-    </motion.svg>
+      </motion.svg>
+    </motion.div>
   )
 }
 
@@ -174,22 +160,6 @@ function CurtainArtwork({ reduce }: { reduce: boolean }) {
           Est · Curated Goods — Rawalpindi
         </motion.p>
       </div>
-
-      {/* a slow sheen crosses the embroidery while it holds — light
-          catching the thread before the seam opens */}
-      {!reduce && (
-        <motion.div
-          className="pointer-events-none absolute -inset-x-12 -inset-y-8 mix-blend-soft-light"
-          style={{
-            background:
-              'linear-gradient(105deg, transparent 38%, rgba(255,243,224,.9) 50%, transparent 62%)',
-            filter: 'blur(2px)',
-          }}
-          initial={{ x: '-115%' }}
-          animate={{ x: '115%' }}
-          transition={{ duration: 1.15, delay: 2.0, ease: [0.6, 0, 0.3, 1] }}
-        />
-      )}
     </>
   )
 }
@@ -312,7 +282,7 @@ function Curtain({
 
 export default function Preloader({ onComplete }: { onComplete: () => void }) {
   const reduce = useReducedMotion()
-  const [phase, setPhase] = useState(0) // 0 stitched brand holds, 1 curtains part, 2 gone
+  const [phase, setPhase] = useState(0) // 0 stitched hold · 1 curtains part · 2 silk dissolves · 3 gone
 
   useEffect(() => {
     // shares the app-wide refcounted lock — stacked overlays (deep-linked
@@ -327,23 +297,34 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
     const partAt = reduce ? 700 : PART_MS
     const t1 = window.setTimeout(() => {
       setPhase(1)
-      onComplete()
+      onComplete() // hero mounts beneath the parting silk
       unlock() // store is interactive beneath the parting silk
     }, partAt)
-    const t2 = window.setTimeout(() => setPhase(2), partAt + (reduce ? 600 : 1450))
+    // after the panels sweep clear, dissolve the opaque silk backdrop so the
+    // already-settled storefront crossfades in rather than popping in hard
+    const t2 = window.setTimeout(() => setPhase(2), partAt + (reduce ? 380 : 1180))
+    const t3 = window.setTimeout(
+      () => setPhase(3),
+      partAt + (reduce ? 380 : 1180) + (reduce ? 340 : 620),
+    )
     return () => {
       window.clearTimeout(t1)
       window.clearTimeout(t2)
+      window.clearTimeout(t3)
       unlock()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (phase === 2) return null
+  if (phase === 3) return null
+
+  const dissolve = phase === 2
 
   return (
-    <div
+    <motion.div
       className="fixed inset-0 z-[200]"
+      animate={{ opacity: dissolve ? 0 : 1 }}
+      transition={{ duration: reduce ? 0.34 : 0.7, ease: [0.4, 0, 0.2, 1] }}
       style={{
         pointerEvents: phase >= 1 ? 'none' : 'auto',
         // silk fallback tone — seals any sub-pixel hairline between the panels
@@ -397,8 +378,32 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
         initial={{ opacity: 0 }}
         transition={{ duration: 0.4, delay: phase >= 1 ? 0 : 2.45 }}
       >
-        A RetailFlow Demo Storefront
+        Browse the catalog · Order on WhatsApp
       </motion.p>
-    </div>
+
+      {/* cinematic edge vignette — a stage-light focus pulls in around the
+          embroidery while the silk is closed, then breathes out as the
+          curtains part and the storefront dissolves into view */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-20"
+        style={{
+          background:
+            'radial-gradient(125% 96% at 50% 44%, rgba(0,0,0,0) 52%, rgba(28,7,2,0.04) 70%, rgba(28,7,2,0.5) 100%)',
+        }}
+        animate={
+          phase >= 1
+            ? { opacity: 0 }
+            : reduce
+              ? { opacity: 0.55 }
+              : { opacity: [0.55, 0.85, 0.55] }
+        }
+        transition={
+          phase >= 1
+            ? { duration: reduce ? 0.35 : 1.15, ease: [0.22, 1, 0.36, 1] }
+            : { repeat: Infinity, duration: 3.6, ease: 'easeInOut' }
+        }
+      />
+    </motion.div>
   )
 }

@@ -11,11 +11,6 @@ export const WA_NUMBER = '923335666050'
 export const waLink = (message: string) =>
   `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`
 
-export const MSG_BUSINESS =
-  'Assalamualaikum, I want to discuss RetailFlow for my business'
-
-export const MSG_RETAILFLOW = 'Assalamualaikum, I want RetailFlow for my business'
-
 export const MSG_SHOP =
   'Assalamualaikum, I have a question about a product at Marigold & Clay.'
 
@@ -68,6 +63,3 @@ export function cartMessage(name: string, note: string, lines: ResolvedLine[], t
     .filter((l) => l !== null)
     .join('\n')
 }
-
-export const packageMessage = (pkg: string) =>
-  `Assalamualaikum, I'm interested in the ${pkg} package for my business. Please share the next steps.`
