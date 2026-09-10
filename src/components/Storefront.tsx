@@ -42,143 +42,206 @@ function MaskedLine({
   )
 }
 
-/* ── Campaign hero — full-bleed editorial with parallax ────────────── */
+/* ── Campaign hero — the landing stage ───────────────────────────────
+   Solid espresso canvas, the season slogan and headline centered, two
+   actions beneath it, and the new/featured photos circling the headline
+   like a fan. Scrolling lifts the text away first, then gathers the fan
+   to the right and hoops it off the canvas before the store continues. */
+
+const ORBIT_PHOTOS: Product[] = (() => {
+  const picks: Product[] = []
+  for (const p of products) if ((p.isNew || p.featured) && picks.length < 8) picks.push(p)
+  for (const p of products) if (picks.length < 8 && !picks.includes(p)) picks.push(p)
+  return picks
+})()
+
+const ORBIT_SECONDS = 52
+
+function OrbitFan({ ready }: { ready: boolean }) {
+  const reduce = useReducedMotion()
+  const count = ORBIT_PHOTOS.length
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute inset-0"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
+      transition={{ duration: 1.1, delay: 0.42, ease }}
+    >
+      {/* the ring — one slow continuous revolution */}
+      <motion.div
+        className="absolute left-1/2 top-1/2"
+        style={{ x: '-50%', y: '-50%' }}
+        animate={reduce ? undefined : { rotate: 360 }}
+        transition={
+          reduce ? undefined : { repeat: Infinity, duration: ORBIT_SECONDS, ease: 'linear' }
+        }
+      >
+        {ORBIT_PHOTOS.map((p, i) => {
+          const a = (360 / count) * i
+          return (
+            <div
+              key={p.id}
+              className="absolute left-0 top-0"
+              style={{
+                transform: `rotate(${a}deg) translate(var(--orbit-r, 15rem)) rotate(${-a}deg)`,
+              }}
+            >
+              {/* counter-revolve at the same rate so cards stay upright */}
+              <motion.div
+                className="-translate-x-1/2 -translate-y-1/2"
+                animate={reduce ? undefined : { rotate: -360 }}
+                transition={
+                  reduce ? undefined : { repeat: Infinity, duration: ORBIT_SECONDS, ease: 'linear' }
+                }
+              >
+                <div className="h-28 w-20 overflow-hidden rounded-2xl border border-cream/25 shadow-soft sm:h-36 sm:w-26 lg:h-40 lg:w-30">
+                  <img
+                    src={p.image}
+                    alt=""
+                    loading="eager"
+                    draggable={false}
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
+                </div>
+              </motion.div>
+            </div>
+          )
+        })}
+      </motion.div>
+    </motion.div>
+  )
+}
 
 export function CampaignHero({ ready = true }: { ready?: boolean }) {
-  const { goShop, openProduct } = useStore()
+  const { goShop } = useStore()
   const reduce = useReducedMotion()
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '18%'])
-  const scale = useTransform(scrollYProgress, [0, 1], [1.02, 1.12])
-  const fade = useTransform(scrollYProgress, [0, 0.75], [1, 0])
-  const hero = products[1] // Embroidered 2-Piece Suit
+
+  // the text yields the canvas first…
+  const textFade = useTransform(scrollYProgress, [0, 0.3], [1, 0])
+  const textLift = useTransform(scrollYProgress, [0, 0.35], ['0rem', '-3.5rem'])
+  const cueFade = useTransform(scrollYProgress, [0, 0.1], [1, 0])
+  // …then the fan gathers right, hoops up, and sweeps out of the canvas
+  const fanX = useTransform(scrollYProgress, [0.08, 0.55, 1], ['0vw', '26vw', '135vw'])
+  const fanScale = useTransform(scrollYProgress, [0, 0.55, 1], [1, 1.32, 1.12])
+  const fanTilt = useTransform(scrollYProgress, [0, 1], [0, 34])
+  const fanFadeExit = useTransform(scrollYProgress, [0.45, 0.85], [1, 0])
 
   return (
     <section
       id="top"
       ref={ref}
-      className="relative flex min-h-[calc(100svh-4.25rem)] items-end overflow-hidden bg-espresso"
+      className="relative h-[152svh] bg-espresso"
+      style={{ ['--orbit-r' as never]: 'clamp(9.5rem, 26vw, 19rem)' } as React.CSSProperties}
     >
-      {/* campaign image with parallax drift */}
-      <motion.div
-        aria-hidden
-        className="absolute inset-0"
-        style={reduce ? undefined : { y, scale }}
-      >
-        <img
-          src="/products/campaign-hero.jpg"
-          alt=""
-          className="h-full w-full object-cover object-[72%_center]"
+      <div className="sticky top-0 h-[100svh] overflow-hidden">
+        {/* warm ember glow — palette-appropriate solid, lifted at center */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(72% 58% at 50% 40%, rgba(192,91,44,.16), rgba(42,33,27,0) 72%)',
+          }}
         />
-      </motion.div>
-      {/* scrims — text side + bottom */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-r from-espresso/65 via-espresso/25 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-espresso/70 via-espresso/20 to-transparent"
-      />
 
-      {/* season tag */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={ready ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.8, delay: 0.5 }}
-        className="absolute left-4 top-6 text-[10px] font-bold uppercase tracking-mega text-cream/70 sm:left-6 lg:left-8"
-      >
-        Marigold &amp; Clay · Season 04 — Rawalpindi
-      </motion.p>
-
-      {/* copy block */}
-      <motion.div
-        className="relative mx-auto w-full max-w-7xl px-4 pb-24 pt-28 sm:px-6 lg:px-8 lg:pb-28"
-        style={reduce ? undefined : { opacity: fade }}
-      >
-        <h1 className="max-w-2xl font-display text-[13vw] font-medium leading-[0.98] tracking-tight text-cream sm:text-7xl lg:text-[5.2rem]">
-          <MaskedLine delay={0.35} play={ready}>Dress like the</MaskedLine>
-          <MaskedLine delay={0.47} play={ready}>
-            <span className="italic text-claylight">season</span> feels.
-          </MaskedLine>
-        </h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 18 }}
-          animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
-          transition={{ duration: 0.8, delay: 0.72, ease }}
-          className="mt-5 max-w-md text-sm leading-relaxed text-cream/80 sm:text-base"
-        >
-          Embroidered lawn, soft cotton and hand-finished goods — curated in Rawalpindi.
-          Browse the racks, then order in one clean WhatsApp message.
-        </motion.p>
-
+        {/* orbiting catalogue fan + its scroll-driven exit */}
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
-          transition={{ duration: 0.8, delay: 0.86, ease }}
-          className="mt-8 flex flex-wrap items-center gap-3"
+          className="absolute inset-0"
+          style={reduce ? { opacity: fanFadeExit } : { x: fanX, scale: fanScale, rotate: fanTilt }}
         >
-          <button
-            onClick={() => goShop('sale')}
-            className="group flex h-12 items-center gap-2 rounded-full bg-cream px-6 text-sm font-bold text-espresso shadow-pop transition-all hover:bg-sand active:scale-[0.98]"
-          >
-            Shop the Edit
-            <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
-          <button
-            onClick={() => goShop('new')}
-            className="flex h-12 items-center gap-2 rounded-full border border-cream/35 px-6 text-sm font-bold text-cream backdrop-blur transition-all hover:bg-cream/10 active:scale-[0.98]"
-          >
-            New In
-          </button>
+          <OrbitFan ready={ready} />
         </motion.div>
-      </motion.div>
 
-      {/* shoppable hero chip — desktop */}
-      <motion.button
-        initial={{ opacity: 0, y: 26 }}
-        animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 26 }}
-        transition={{ duration: 0.85, delay: 1.05, ease }}
-        onClick={() => openProduct(hero)}
-        className="group absolute bottom-8 right-8 hidden w-64 items-center gap-3 overflow-hidden rounded-[4px] border-l-2 border-terracotta bg-espresso p-3.5 text-left shadow-soft transition-colors hover:bg-charcoal lg:flex"
-      >
-        <img
-          src={hero.image}
-          alt={hero.name}
-          className="h-16 w-16 rounded-[2px] object-cover"
-          loading="eager"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[9px] font-bold uppercase tracking-mega text-clay">
-            As worn — quick view
-          </span>
-          <span className="mt-0.5 block truncate text-[13px] font-bold text-cream">
-            {hero.name}
-          </span>
-          <span className="text-[12px] font-semibold text-cream/70">{rs(priceOf(hero))}</span>
-        </span>
-        <IconArrowRight className="h-4 w-4 shrink-0 text-cream/60 transition-transform group-hover:translate-x-0.5" />
-      </motion.button>
-
-      {/* scroll cue */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={ready ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ delay: 1.4, duration: 0.7 }}
-        className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 sm:flex"
-        aria-hidden
-      >
-        <span className="text-[9px] font-bold uppercase tracking-mega text-cream/55">Scroll</span>
-        <motion.span
-          animate={reduce ? undefined : { y: [0, 6, 0] }}
-          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-cream/30 text-cream/70"
+        {/* stage text — season slogan · headline · exactly two actions */}
+        <motion.div
+          className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center"
+          style={{ opacity: textFade, y: textLift }}
         >
-          <IconChevronDown className="h-4 w-4" />
-        </motion.span>
-      </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={ready ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.8, delay: 0.42 }}
+            className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-mega text-cream/65"
+          >
+            <span className="h-px w-6 bg-clay/70" aria-hidden />
+            Marigold &amp; Clay · Season 04 — Rawalpindi
+            <span className="h-px w-6 bg-clay/70" aria-hidden />
+          </motion.p>
+
+          <h1 className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-cream sm:text-6xl lg:text-[4.6rem]">
+            <MaskedLine delay={0.52} play={ready}>
+              Dress like the
+            </MaskedLine>
+            <MaskedLine delay={0.64} play={ready}>
+              <span className="italic text-claylight">season</span> feels.
+            </MaskedLine>
+          </h1>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
+            transition={{ duration: 0.8, delay: 0.95, ease }}
+            className="mt-9 flex flex-wrap items-center justify-center gap-3"
+          >
+            <button
+              onClick={() => goShop('all')}
+              className="group flex h-12 items-center gap-2 rounded-full bg-cream px-7 text-sm font-bold text-espresso shadow-pop transition-all hover:bg-sand active:scale-[0.98]"
+            >
+              Enter the Store
+              <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+            <button
+              onClick={() => goShop('sale')}
+              className="flex h-12 items-center gap-2 rounded-full bg-terracotta px-7 text-sm font-bold text-cream transition-all hover:bg-terracotta-dark active:scale-[0.98]"
+            >
+              The Autumn Edit
+            </button>
+          </motion.div>
+        </motion.div>
+
+        {/* scroll cue — exits with the text */}
+        <motion.div
+          className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 sm:block"
+          style={{ opacity: cueFade }}
+          aria-hidden
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={ready ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ delay: 1.5, duration: 0.7 }}
+          >
+            <motion.span
+              animate={reduce ? undefined : { y: [0, 6, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-cream/30 text-cream/70"
+            >
+              <IconChevronDown className="h-4 w-4" />
+            </motion.span>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+/* ── lead-in — the hero's promise lands just past the fold ─────────── */
+
+export function LeadIn() {
+  return (
+    <section className="border-b border-line bg-parchment/60">
+      <div className="mx-auto max-w-3xl px-4 py-12 text-center sm:py-14">
+        <Reveal>
+          <p className="text-[11px] font-bold uppercase tracking-mega text-taupe">The Promise</p>
+          <p className="mt-4 font-display text-2xl font-light italic leading-snug text-espresso sm:text-3xl">
+            “Embroidered lawn, soft cotton and hand-finished goods — curated in Rawalpindi.
+            Browse the racks, then order in one clean WhatsApp message.”
+          </p>
+        </Reveal>
+      </div>
     </section>
   )
 }

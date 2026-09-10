@@ -245,6 +245,20 @@ function CollectionsNav({
 
 /* ── Collection page ───────────────────────────────────────────────── */
 
+/* skeleton card — mirrors the product card's geometry for filler loading */
+
+function SkeletonCard() {
+  return (
+    <div aria-hidden>
+      <div className="skeleton aspect-[4/5] w-full rounded-3xl" />
+      <div className="mt-3.5 space-y-2 px-0.5">
+        <div className="skeleton h-3.5 w-3/4 rounded-full" />
+        <div className="skeleton h-3 w-2/5 rounded-full" />
+      </div>
+    </div>
+  )
+}
+
 export default function CollectionPage({ view }: { view: CollectionView }) {
   const { goShop, searchTick, consumeSearchFocus } = useStore()
   usePendingAnchorScroll()
@@ -257,6 +271,21 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
   const [colors, setColors] = useState<string[]>([])
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const firstPass = useRef(true)
+
+  /* brief skeleton shimmer whenever the result set is re-queried —
+     natural-ui filler loading, never the intro curtain; the page's own
+     first render skips it because mount already feels instant */
+  useEffect(() => {
+    if (firstPass.current) {
+      firstPass.current = false
+      return
+    }
+    setRefreshing(true)
+    const t = window.setTimeout(() => setRefreshing(false), 420)
+    return () => window.clearTimeout(t)
+  }, [sort, query, sizes, colors, maxPrice])
 
   /* nav search icon — works from any page, on first mount and re-clicks */
   useEffect(() => {
@@ -482,12 +511,22 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
 
             {/* ── grid ── */}
             <div className="mt-6">
-              <p className="mb-5 text-[13px] font-semibold text-taupe" role="status">
-                Showing <span className="text-espresso">{list.length}</span> of {rack.length}{' '}
-                {rack.length === 1 ? 'piece' : 'pieces'}
-              </p>
+              {refreshing ? (
+                <div className="skeleton mb-5 h-3.5 w-44 rounded-full" aria-hidden />
+              ) : (
+                <p className="mb-5 text-[13px] font-semibold text-taupe" role="status">
+                  Showing <span className="text-espresso">{list.length}</span> of {rack.length}{' '}
+                  {rack.length === 1 ? 'piece' : 'pieces'}
+                </p>
+              )}
 
-              {list.length === 0 ? (
+              {refreshing ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-9 sm:grid-cols-3 sm:gap-x-5" aria-busy>
+                  {Array.from({ length: Math.min(Math.max(list.length, 6), 9) }).map((_, i) => (
+                    <SkeletonCard key={i} />
+                  ))}
+                </div>
+              ) : list.length === 0 ? (
                 <div className="flex flex-col items-center rounded-3xl border border-dashed border-taupe/40 bg-parchment/40 px-6 py-20 text-center">
                   <IconSearch className="h-8 w-8 text-taupe" />
                   <p className="mt-4 font-display text-xl text-espresso">

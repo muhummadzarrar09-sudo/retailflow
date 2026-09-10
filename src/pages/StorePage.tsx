@@ -4,6 +4,7 @@ import {
   CategoryTiles,
   CraftSplit,
   EditorialBanner,
+  LeadIn,
   LookbookStrip,
   NewArrivalsRail,
   Newsletter,
@@ -25,6 +26,7 @@ function HomeSections({ ready }: { ready: boolean }) {
   return (
     <>
       <CampaignHero ready={ready} />
+      <LeadIn />
       <Marquee />
       <CategoryTiles />
       <NewArrivalsRail />
