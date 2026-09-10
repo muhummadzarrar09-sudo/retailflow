@@ -17,23 +17,6 @@ import { ProductCard } from './ProductCard'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
-/* ── Announcement ribbon — honest demo framing for the storefront ──── */
-
-export function Ribbon() {
-  return (
-    <div className="bg-terracotta text-cream">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-        <span className="hidden text-[10px] font-bold uppercase tracking-mega sm:inline">
-          Live storefront
-        </span>
-        <p className="mx-auto text-center text-[11px] font-semibold sm:text-[12px]">
-          Every button, filter and inquiry is live — browse, then order in one clean WhatsApp message.
-        </p>
-      </div>
-    </div>
-  )
-}
-
 /* ── masked-line headline reveal (brand campaign style) ────────────── */
 
 function MaskedLine({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {

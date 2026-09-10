@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import InquiryCart from './components/InquiryCart'
 import Nav from './components/Nav'
 import Preloader from './components/Preloader'
-import { Ribbon } from './components/Storefront'
 import { Footer, StickyCTA } from './components/Footer'
 import StorePage from './pages/StorePage'
 import { useStore, VIEW_LABEL } from './store/StoreContext'
@@ -53,7 +52,6 @@ export default function App() {
     <div className="min-h-screen">
       <div className="grain-overlay" aria-hidden />
       <Preloader onComplete={() => setLoaded(true)} />
-      <Ribbon />
       <Nav />
       {loaded && (
         <motion.div

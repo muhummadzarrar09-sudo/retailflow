@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { cn } from '../utils/helpers'
 
 /* ── Icons ─────────────────────────────────────────────────────────── */
@@ -200,25 +200,58 @@ export const WhatsAppIcon = ({ className }: IconProps) => (
   </svg>
 )
 
-/* ── Demo storefront brand: Marigold & Clay ────────────────────────── */
+/* ── Demo storefront brand: Marigold & Clay ──────────────────────────
+   The logo mark is a layered marigold bloom: a dense outer ring of petals,
+   an offset inner ring, and a cream seed core — drawn in the brand's warm
+   terracotta ramp so it reads on both cream and espresso backgrounds. */
 
 export function ShopMark({ className = 'h-9 w-9' }: IconProps) {
+  // unique gradient ids — several marks render at once (nav + footer)
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
+  const petal = `mcl-petal-${uid}`
+  const core = `mcl-core-${uid}`
   return (
-    <svg viewBox="0 0 40 40" className={className} aria-hidden>
-      <circle cx="20" cy="20" r="19" fill="#BF5B2D" />
-      {Array.from({ length: 8 }).map((_, i) => (
-        <ellipse
-          key={i}
-          cx="20"
-          cy="12"
-          rx="2.7"
-          ry="6.2"
-          fill="#F3EBDD"
-          transform={`rotate(${i * 45} 20 20)`}
-        />
-      ))}
-      <circle cx="20" cy="20" r="4.4" fill="#8C4423" />
-      <circle cx="20" cy="20" r="2" fill="#E8B98A" />
+    <svg viewBox="0 0 48 48" className={className} aria-hidden>
+      <defs>
+        <radialGradient id={petal} cx="50%" cy="36%" r="68%">
+          <stop offset="0%" stopColor="#F5C68C" />
+          <stop offset="52%" stopColor="#DD7A33" />
+          <stop offset="100%" stopColor="#A94A22" />
+        </radialGradient>
+        <radialGradient id={core} cx="50%" cy="42%" r="62%">
+          <stop offset="0%" stopColor="#FCF3E1" />
+          <stop offset="100%" stopColor="#EBCFA1" />
+        </radialGradient>
+      </defs>
+      {/* outer petal ring */}
+      <g fill={`url(#${petal})`}>
+        {Array.from({ length: 12 }).map((_, i) => (
+          <ellipse
+            key={i}
+            cx="24"
+            cy="9.6"
+            rx="4.5"
+            ry="8.6"
+            transform={`rotate(${i * 30} 24 24)`}
+          />
+        ))}
+      </g>
+      {/* inner petal ring — offset for a dense, ruffled marigold */}
+      <g fill="#C25A2C" opacity="0.95">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <ellipse
+            key={i}
+            cx="24"
+            cy="16"
+            rx="3.3"
+            ry="6.2"
+            transform={`rotate(${i * 40 + 20} 24 24)`}
+          />
+        ))}
+      </g>
+      {/* seed core */}
+      <circle cx="24" cy="24" r="6.2" fill={`url(#${core})`} />
+      <circle cx="24" cy="24" r="2.3" fill="#8C4423" />
     </svg>
   )
 }
@@ -233,19 +266,24 @@ export function ShopLogo({
   onClick?: React.MouseEventHandler<HTMLAnchorElement>
 }) {
   return (
-    <a href={href} onClick={onClick} className="group flex items-center gap-2.5">
-      <ShopMark className="h-9 w-9 transition-transform duration-500 group-hover:rotate-45" />
+    <a href={href} onClick={onClick} className="group flex items-center gap-3">
+      <ShopMark className="h-10 w-10 shrink-0 transition-transform duration-500 ease-out group-hover:-rotate-12" />
       <span className="leading-none">
         <span
           className={cn(
-            'font-display text-[1.3rem] font-semibold tracking-tight',
+            'font-display text-[1.35rem] font-semibold tracking-tight',
             dark ? 'text-cream' : 'text-espresso',
           )}
         >
           Marigold <span className="italic text-terracotta">&</span> Clay
         </span>
-        <span className="mt-1 block text-[9px] font-bold uppercase tracking-mega text-taupe">
-          General Store · Demo
+        <span
+          className={cn(
+            'mt-1 block text-[9px] font-bold uppercase tracking-mega',
+            dark ? 'text-cream/45' : 'text-taupe',
+          )}
+        >
+          Curated General Store
         </span>
       </span>
     </a>
