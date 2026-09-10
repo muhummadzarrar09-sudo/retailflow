@@ -52,15 +52,10 @@ export function Footer() {
             <p className="mt-5 max-w-sm font-display text-2xl font-light italic leading-snug text-cream/85">
               “Everyday goods, chosen with care — browse the catalog, order on WhatsApp.”
             </p>
-            <a
-              href={waLink(MSG_SHOP)}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-leaf px-5 py-2.5 text-[13px] font-bold text-cream transition-opacity hover:opacity-90"
-            >
-              <WhatsAppIcon className="h-4 w-4" />
-              Message the Shop
-            </a>
+            <p className="mt-6 flex items-center gap-2.5 text-[12px] font-semibold text-cream/50">
+              <WhatsAppIcon className="h-4 w-4 text-leaf" />
+              Replies within store hours — the chat bubble follows every page.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">

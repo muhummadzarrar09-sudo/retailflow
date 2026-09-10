@@ -7,7 +7,7 @@ import {
   VIEW_LABEL,
   type ShopView,
 } from '../store/StoreContext'
-import { cn, MSG_SHOP, waLink } from '../utils/helpers'
+import { cn } from '../utils/helpers'
 import { lockScroll, unlockScroll } from '../utils/scrollLock'
 import { useFocusTrap } from '../utils/focusTrap'
 import {
@@ -18,7 +18,6 @@ import {
   IconSearch,
   IconX,
   ShopLogo,
-  WhatsAppIcon,
 } from './ui'
 
 /* mega-menu racks — mirrors the storefront category tiles */
@@ -270,16 +269,6 @@ export default function Nav() {
               </AnimatePresence>
             </button>
 
-            <a
-              href={waLink(MSG_SHOP)}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden h-10 items-center gap-2 rounded-full bg-espresso px-4.5 text-[13px] font-semibold text-cream transition-all hover:bg-charcoal hover:shadow-pop md:flex"
-            >
-              <WhatsAppIcon className="h-4 w-4" />
-              Message the Shop
-            </a>
-
             <button
               onClick={() => setMenuOpen(true)}
               className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-espresso/15 text-espresso lg:hidden"
@@ -388,16 +377,7 @@ export default function Nav() {
             </nav>
 
             <div className="p-8">
-              <a
-                href={waLink(MSG_SHOP)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex h-13 items-center justify-center gap-2.5 rounded-full bg-leaf py-3.5 font-semibold"
-              >
-                <WhatsAppIcon className="h-5 w-5" />
-                Message the Shop
-              </a>
-              <p className="mt-4 text-center text-[11px] uppercase tracking-mega text-cream/40">
+              <p className="text-center text-[11px] uppercase tracking-mega text-cream/40">
                 Marigold & Clay — curated general store
               </p>
             </div>

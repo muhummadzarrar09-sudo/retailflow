@@ -1,5 +1,5 @@
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { motion, useInView, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import { priceOf, products, type Category, type Product } from '../data/products'
 import { useStore } from '../store/StoreContext'
 import { MSG_SHOP, rs, waLink } from '../utils/helpers'
@@ -322,6 +322,91 @@ export function NewArrivalsRail() {
   )
 }
 
+/* ── Craft stats ─────────────────────────────────────────────────────
+   Numbers are derived from the live catalog so they can never drift
+   from reality, and they count up once they scroll into view. */
+
+function useCountUp(target: number, duration = 1400) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-40px' })
+  const reduce = useReducedMotion()
+  const [n, setN] = useState(0)
+
+  useEffect(() => {
+    if (!inView) return
+    if (reduce) {
+      setN(target)
+      return
+    }
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration)
+      setN(Math.round(target * (1 - Math.pow(1 - p, 3)))) // ease-out cubic
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView, target, duration, reduce])
+
+  // reduced-motion users get the final figure immediately, no ticking
+  return { ref, value: reduce && !inView ? target : n }
+}
+
+function StatNumber({ target }: { target: number }) {
+  const { ref, value } = useCountUp(target)
+  return (
+    <span ref={ref} className="tabular-nums">
+      {value}
+    </span>
+  )
+}
+
+export function CraftStats() {
+  const totalPieces = products.length
+  const rackCount = new Set(products.map((p) => p.category)).size
+
+  const stats: { idx: string; label: string; hint: string; target?: number; text?: string }[] = [
+    {
+      idx: '01',
+      target: totalPieces,
+      label: 'Curated pieces',
+      hint: 'Each one inspected on the table before it reaches the rail.',
+    },
+    {
+      idx: '02',
+      target: rackCount,
+      label: 'Category racks',
+      hint: 'Clothing rail to gift shelf — six ways into the store.',
+    },
+    {
+      idx: '03',
+      text: '24–48h',
+      label: 'Dispatch window',
+      hint: 'Packed once your order is confirmed in chat.',
+    },
+  ]
+
+  return (
+    <dl className="mt-10 grid divide-y divide-line overflow-hidden rounded-2xl border border-line bg-parchment/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {stats.map((s) => (
+        <div key={s.idx} className="flex flex-col px-5 py-5 sm:px-6 sm:py-6">
+          <span className="font-display text-[12px] font-semibold italic text-terracotta">
+            {s.idx}
+          </span>
+          <dt className="order-3 mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-taupe">
+            {s.label}
+          </dt>
+          <dd className="order-2 mt-2.5 font-display text-4xl font-semibold tracking-tight text-espresso">
+            {s.target != null ? <StatNumber target={s.target} /> : s.text}
+          </dd>
+          <p className="order-4 mt-2 text-[12px] leading-relaxed text-cocoa/75">{s.hint}</p>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /* ── The craft — heritage split editorial ──────────────────────────── */
 
 export function CraftSplit() {
@@ -362,22 +447,7 @@ export function CraftSplit() {
           </Reveal>
 
           <Reveal delay={0.1}>
-            <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-line pt-8">
-              {[
-                ['25', 'curated products'],
-                ['6', 'category racks'],
-                ['24–48h', 'dispatch window'],
-              ].map(([v, k]) => (
-                <div key={k}>
-                  <dt className="font-display text-3xl font-semibold tracking-tight text-espresso sm:text-4xl">
-                    {v}
-                  </dt>
-                  <dd className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-taupe">
-                    {k}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <CraftStats />
           </Reveal>
 
           <Reveal delay={0.16}>
