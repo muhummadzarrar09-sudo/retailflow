@@ -74,8 +74,11 @@ export const VIEW_LABEL: Record<ShopView, string> = {
 export const productPath = (slug: string) => `#/shop/product/${slug}`
 
 /* the active route lives purely in the hash — unknown/empty hashes fall
-   back to the storefront home so nothing ever 404s */
-const shopRouteFromHash = (): ShopRoute => {
+   back to the storefront home so nothing ever 404s. On the server there is
+   no URL, so the prerender always paints the home page; the client then
+   hydrates it only when the real hash agrees (see main.tsx). */
+export const shopRouteFromHash = (): ShopRoute => {
+  if (typeof window === 'undefined') return { kind: 'shop', view: 'home' }
   const h = window.location.hash
   if (h.startsWith('#/shop')) {
     const parts = h.slice(1).split('/').filter(Boolean) // ['shop', ...]
@@ -150,18 +153,29 @@ const scrollTop = (smooth: boolean) => {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>(loadLines)
+  /* start empty so server HTML and the first client render match byte-for-
+     byte; the persisted basket is restored in an effect right after mount */
+  const [lines, setLines] = useState<CartLine[]>([])
+  const [hydratedCart, setHydratedCart] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [route, setRoute] = useState<ShopRoute>(() => shopRouteFromHash())
   const pendingAnchor = useRef<string | null>(null)
 
   useEffect(() => {
+    setLines(loadLines())
+    setHydratedCart(true)
+  }, [])
+
+  useEffect(() => {
+    // persist only after the restore above has committed — never overwrite a
+    // saved basket with the empty server-rendered state
+    if (!hydratedCart) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(lines))
     } catch {
       /* storage unavailable — session-only cart */
     }
-  }, [lines])
+  }, [lines, hydratedCart])
 
   /* back/forward buttons + direct hash edits drive the active route */
   useEffect(() => {

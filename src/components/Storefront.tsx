@@ -19,13 +19,21 @@ const ease = [0.22, 1, 0.36, 1] as const
 
 /* ── masked-line headline reveal (brand campaign style) ────────────── */
 
-function MaskedLine({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function MaskedLine({
+  children,
+  delay = 0,
+  play = true,
+}: {
+  children: React.ReactNode
+  delay?: number
+  play?: boolean
+}) {
   return (
     <span className="block overflow-hidden pb-[0.08em]">
       <motion.span
         className="block"
         initial={{ y: '112%' }}
-        animate={{ y: '0%' }}
+        animate={play ? { y: '0%' } : { y: '112%' }}
         transition={{ duration: 0.9, delay, ease }}
       >
         {children}
@@ -36,7 +44,7 @@ function MaskedLine({ children, delay = 0 }: { children: React.ReactNode; delay?
 
 /* ── Campaign hero — full-bleed editorial with parallax ────────────── */
 
-export function CampaignHero() {
+export function CampaignHero({ ready = true }: { ready?: boolean }) {
   const { goShop, openProduct } = useStore()
   const reduce = useReducedMotion()
   const ref = useRef<HTMLElement>(null)
@@ -77,7 +85,7 @@ export function CampaignHero() {
       {/* season tag */}
       <motion.p
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        animate={ready ? { opacity: 1 } : { opacity: 0 }}
         transition={{ duration: 0.8, delay: 0.5 }}
         className="absolute left-4 top-6 text-[10px] font-bold uppercase tracking-mega text-cream/70 sm:left-6 lg:left-8"
       >
@@ -90,15 +98,15 @@ export function CampaignHero() {
         style={reduce ? undefined : { opacity: fade }}
       >
         <h1 className="max-w-2xl font-display text-[13vw] font-medium leading-[0.98] tracking-tight text-cream sm:text-7xl lg:text-[5.2rem]">
-          <MaskedLine delay={0.35}>Dress like the</MaskedLine>
-          <MaskedLine delay={0.47}>
+          <MaskedLine delay={0.35} play={ready}>Dress like the</MaskedLine>
+          <MaskedLine delay={0.47} play={ready}>
             <span className="italic text-claylight">season</span> feels.
           </MaskedLine>
         </h1>
 
         <motion.p
           initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
           transition={{ duration: 0.8, delay: 0.72, ease }}
           className="mt-5 max-w-md text-sm leading-relaxed text-cream/80 sm:text-base"
         >
@@ -108,7 +116,7 @@ export function CampaignHero() {
 
         <motion.div
           initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
           transition={{ duration: 0.8, delay: 0.86, ease }}
           className="mt-8 flex flex-wrap items-center gap-3"
         >
@@ -131,7 +139,7 @@ export function CampaignHero() {
       {/* shoppable hero chip — desktop */}
       <motion.button
         initial={{ opacity: 0, y: 26 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 26 }}
         transition={{ duration: 0.85, delay: 1.05, ease }}
         onClick={() => openProduct(hero)}
         className="group absolute bottom-8 right-8 hidden w-64 items-center gap-3 overflow-hidden rounded-[4px] border-l-2 border-terracotta bg-espresso p-3.5 text-left shadow-soft transition-colors hover:bg-charcoal lg:flex"
@@ -157,7 +165,7 @@ export function CampaignHero() {
       {/* scroll cue */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        animate={ready ? { opacity: 1 } : { opacity: 0 }}
         transition={{ delay: 1.4, duration: 0.7 }}
         className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 sm:flex"
         aria-hidden

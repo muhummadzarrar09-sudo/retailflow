@@ -7,13 +7,19 @@ import { Footer, StickyCTA } from './components/Footer'
 import StorePage from './pages/StorePage'
 import { useStore, VIEW_LABEL } from './store/StoreContext'
 import { products } from './data/products'
+import { warmProductImages } from './utils/preloadImages'
 
 export default function App() {
-  // main content mounts the moment the silk starts lifting, so the hero's
-  // own entrance choreography plays as the storefront is revealed
+  // content renders immediately (and ships server-rendered); `loaded` only
+  // releases the entrance choreography once the silk starts parting
   const [loaded, setLoaded] = useState(false)
   const reduce = useReducedMotion()
   const { route, view, product, openProduct } = useStore()
+
+  // warm the whole catalog into the browser cache during the intro
+  useEffect(() => {
+    warmProductImages()
+  }, [])
 
   // legacy deep links shared on WhatsApp: #product-<slug> → full product page
   useEffect(() => {
@@ -53,27 +59,34 @@ export default function App() {
       <div className="grain-overlay" aria-hidden />
       <Preloader onComplete={() => setLoaded(true)} />
       <Nav />
-      {loaded && (
-        <motion.div
-          className="origin-top overflow-x-clip"
-          initial={reduce ? { opacity: 0 } : { scale: 1.055, filter: 'blur(10px)', opacity: 0.6 }}
-          animate={reduce ? { opacity: 1 } : { scale: 1, filter: 'blur(0px)', opacity: 1 }}
-          transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <main>
-            {/* Remount the page on every route change. We deliberately avoid
-                AnimatePresence mode="wait" cross-page exit/enter here: it can
-                leave the incoming page stuck at opacity 0 (blank) when the
-                exit handoff is interrupted in a real browser. Directly keyed
-                remounting makes each navigation mount exactly like the initial
-                page load, which is reliable. */}
-            <StorePage
-              key={route.kind === 'product' ? `p-${route.slug}` : `v-${route.view}`}
-            />
-          </main>
-          <Footer />
-        </motion.div>
-      )}
+      <motion.div
+        className="origin-top overflow-x-clip"
+        variants={
+          reduce
+            ? { hidden: { opacity: 0 }, shown: { opacity: 1 } }
+            : {
+                hidden: { scale: 1.055, filter: 'blur(10px)', opacity: 0.6 },
+                shown: { scale: 1, filter: 'blur(0px)', opacity: 1 },
+              }
+        }
+        initial="hidden"
+        animate={loaded ? 'shown' : 'hidden'}
+        transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <main>
+          {/* Remount the page on every route change. We deliberately avoid
+              AnimatePresence mode="wait" cross-page exit/enter here: it can
+              leave the incoming page stuck at opacity 0 (blank) when the
+              exit handoff is interrupted in a real browser. Directly keyed
+              remounting makes each navigation mount exactly like the initial
+              page load, which is reliable. */}
+          <StorePage
+            ready={loaded}
+            key={route.kind === 'product' ? `p-${route.slug}` : `v-${route.view}`}
+          />
+        </main>
+        <Footer />
+      </motion.div>
       {/* overlays */}
       <InquiryCart />
       <StickyCTA />

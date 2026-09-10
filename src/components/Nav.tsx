@@ -156,17 +156,32 @@ function MegaMenu() {
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false)
+  const [pilled, setPilled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   useFocusTrap(menuRef, menuOpen)
   const { count, setCartOpen, view, goShop, queueSearchFocus } = useStore()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
+    const onScroll = () => {
+      setScrolled(window.scrollY > 24)
+      /* the glass pill arrives just as the hero's bottom edge passes the
+         header — on pages without a hero (collections, products) it settles
+         in as soon as you start scrolling */
+      const hero = document.getElementById('top')
+      const threshold = hero ? hero.offsetTop + hero.offsetHeight - 76 : 140
+      setPilled(window.scrollY > threshold)
+    }
     onScroll()
+    const raf = requestAnimationFrame(onScroll) // re-check after route scroll resets
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+    window.addEventListener('resize', onScroll)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [view])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -192,13 +207,25 @@ export default function Nav() {
     <>
       <header
         className={cn(
-          'sticky top-0 z-50 transition-all duration-500',
-          scrolled
-            ? 'border-b border-line bg-cream/90 backdrop-blur-xl'
-            : 'bg-cream/70 backdrop-blur-sm',
+          'sticky top-0 z-50 h-[4.25rem] transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          pilled
+            ? 'bg-transparent'
+            : scrolled
+              ? 'border-b border-line bg-cream/90 backdrop-blur-xl'
+              : 'bg-cream/70 backdrop-blur-sm',
         )}
       >
-        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* flat bar over the hero → floating glass pill once it concludes;
+            the outer height never changes, so every pinned offset below
+            (catalog rails, sidebars) keeps lining up */}
+        <div
+          className={cn(
+            'flex items-center justify-between px-4 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-6',
+            pilled
+              ? 'mx-3 mt-[0.44rem] h-[3.55rem] max-w-[62rem] rounded-full border border-white/60 bg-cream/70 shadow-[0_16px_48px_-14px_rgba(50,22,6,0.35),0_2px_10px_rgba(50,22,6,0.08),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-2xl backdrop-saturate-150 lg:mx-auto'
+              : 'mx-auto h-full max-w-7xl lg:px-8',
+          )}
+        >
           <ShopLogo
             href="#/shop"
             onClick={(e) => {

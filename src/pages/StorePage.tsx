@@ -21,10 +21,10 @@ import ProductPage from './ProductPage'
    The wrapper is intentionally a plain div: it must never sit invisible
    while a mount animation runs, so content is always shown on navigation. */
 
-function HomeSections() {
+function HomeSections({ ready }: { ready: boolean }) {
   return (
     <>
-      <CampaignHero />
+      <CampaignHero ready={ready} />
       <Marquee />
       <CategoryTiles />
       <NewArrivalsRail />
@@ -38,7 +38,7 @@ function HomeSections() {
   )
 }
 
-export default function StorePage() {
+export default function StorePage({ ready = true }: { ready?: boolean }) {
   usePendingAnchorScroll()
   const { route, view, product } = useStore()
 
@@ -51,7 +51,7 @@ export default function StorePage() {
           <CollectionPage view="all" />
         )
       ) : view === 'home' ? (
-        <HomeSections />
+        <HomeSections ready={ready} />
       ) : (
         <CollectionPage view={view!} />
       )}
