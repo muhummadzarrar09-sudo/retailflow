@@ -223,7 +223,7 @@ export default function Nav() {
           className={cn(
             'mx-3 mt-[0.44rem] flex h-[3.55rem] max-w-[62rem] items-center justify-between rounded-full border px-4 backdrop-blur-2xl backdrop-saturate-150 transition-all duration-500 sm:px-6 lg:mx-auto',
             overDark
-              ? 'border-white/15 bg-espresso/55 shadow-[0_16px_48px_-14px_rgba(10,4,2,0.65),inset_0_1px_0_rgba(255,255,255,0.16)]'
+              ? 'border-white/[0.08] bg-espresso/55 shadow-[0_16px_48px_-14px_rgba(10,4,2,0.65),inset_0_1px_0_rgba(255,255,255,0.06)]'
               : 'border-white/60 bg-cream/70 shadow-[0_16px_48px_-14px_rgba(50,22,6,0.35),0_2px_10px_rgba(50,22,6,0.08),inset_0_1px_0_rgba(255,255,255,0.7)]',
           )}
         >

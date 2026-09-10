@@ -129,9 +129,15 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
 
         {/* scrims — keep every slide text-safe without flattening the shot */}
         <div aria-hidden className="absolute inset-0 bg-espresso/45" />
+        {/* solid espresso cap for the first ~4% (the pill zone), then it
+            fades open — nothing bright can ever touch the very top edge */}
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-espresso/55 via-espresso/20 to-espresso/70"
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgb(42,33,27) 0%, rgba(42,33,27,0.85) 4%, rgba(42,33,27,0.25) 26%, rgba(42,33,27,0.14) 46%, rgba(42,33,27,0.62) 100%)',
+          }}
         />
         <div
           aria-hidden

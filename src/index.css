@@ -4,6 +4,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* the world behind the canvas is the darkest palette tone — any subpixel
+     overscroll or rounding at the document's top can only reveal espresso,
+     never a pale sliver above the hero */
+  background-color: #2a211b;
 }
 
 body {
