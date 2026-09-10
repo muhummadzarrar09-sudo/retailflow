@@ -65,6 +65,11 @@ for (const [needle, file, toData] of [
     join(root, 'public', 'brand', 'favicon-192.png'),
     (buf) => `data:image/png;base64,${buf.toString('base64')}`,
   ],
+  [
+    '/brand/logo-bloom.png',
+    join(root, 'public', 'brand', 'logo-bloom.png'),
+    (buf) => `data:image/png;base64,${buf.toString('base64')}`,
+  ],
 ]) {
   let buf
   try {

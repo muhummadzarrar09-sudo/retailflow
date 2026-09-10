@@ -13,8 +13,6 @@ import { createServer as createViteServer } from 'vite'
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5173
 const HOST = '0.0.0.0'
 
-const indexHtml = readFileSync(new URL('./index.html', import.meta.url), 'utf-8')
-
 /** @type {import('vite').ViteDevServer} */
 let vite
 
@@ -23,6 +21,8 @@ async function ssrFallback(req, res) {
      hand back a server-rendered page */
   try {
     const url = req.url || '/'
+    // read per request so head edits (icons, preloads) take effect instantly
+    const indexHtml = readFileSync(new URL('./index.html', import.meta.url), 'utf-8')
     const template = await vite.transformIndexHtml(url, indexHtml)
     const { render } = await vite.ssrLoadModule('/src/entry-server.tsx')
     const appHtml = render()

@@ -16,6 +16,7 @@ export function warmProductImages() {
     '/products/campaign-sale.jpg',
     '/products/campaign-flatlay.jpg',
     '/products/campaign-look.jpg',
+    '/brand/logo-bloom.png', // the intro appliqué — must be instant
   ])
   for (const p of products) {
     urls.add(p.image)

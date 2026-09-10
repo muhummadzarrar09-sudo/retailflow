@@ -15,13 +15,38 @@ function StitchedMark() {
   // full-circle path the needle travels (two arcs, clockwise from the top)
   const needlePath = 'M60 8 A52 52 0 1 1 60 112 A52 52 0 1 1 60 8'
   return (
-    <motion.svg
-      viewBox="0 0 120 120"
-      className="h-20 w-20 sm:h-24 sm:w-24"
+    <motion.div
+      className="relative h-20 w-20 sm:h-24 sm:w-24"
       initial={{ scale: 1 }}
       animate={{ scale: [1, 1, 1.035, 1] }}
       transition={{ duration: 0.6, times: [0, 0.5, 0.8, 1], delay: 1.75 }}
     >
+      {/* cream appliqué badge — springs onto the silk first… */}
+      <motion.span
+        aria-hidden
+        className="absolute inset-[17%] rounded-full bg-[#F6E7CF] shadow-[inset_0_2px_6px_rgba(60,20,5,0.14),0_1px_0_rgba(60,20,5,0.18)]"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.58, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+      />
+      {/* …then the marigold bloom appliqué opens on it — the same bloom that
+          sits in the favicon, so the brand mark you keep seeing is the AI one */}
+      <motion.img
+        src="/brand/logo-bloom.png"
+        alt=""
+        draggable={false}
+        className="absolute inset-[20%] h-[60%] w-[60%] select-none"
+        initial={{ scale: 0, opacity: 0, rotate: -24 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ delay: 0.74, duration: 0.72, ease: [0.34, 1.56, 0.64, 1] }}
+      />
+      {/* the stitched seam rides ON TOP — the dashes land like embroidery
+          around the badge's edge */}
+      <motion.svg
+        viewBox="0 0 120 120"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden
+      >
       {/* inner hairline — second thread, crawling opposite */}
       <motion.circle
         cx="60"
@@ -64,47 +89,8 @@ function StitchedMark() {
         <line x1="0" y1="0" x2="11" y2="0" stroke="#E8B98A" strokeWidth="1.8" strokeLinecap="round" />
         <animateMotion dur="1.25s" begin="0.2s" fill="freeze" rotate="auto" path={needlePath} />
       </motion.g>
-      {/* petals bloom */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <g key={i} transform={`rotate(${i * 45} 60 60)`}>
-          <motion.ellipse
-            cx="60"
-            cy="32"
-            rx="7.5"
-            ry="17"
-            fill="#F6E7CF"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{
-              delay: 0.72 + i * 0.075,
-              duration: 0.55,
-              ease: [0.34, 1.56, 0.64, 1],
-            }}
-            style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
-          />
-        </g>
-      ))}
-      <motion.circle
-        cx="60"
-        cy="60"
-        r="10.5"
-        fill="#E8B98A"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 1.25, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
-        style={{ transformOrigin: 'center' }}
-      />
-      <motion.circle
-        cx="60"
-        cy="60"
-        r="4.4"
-        fill="#8C4423"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 1.38, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-        style={{ transformOrigin: 'center' }}
-      />
-    </motion.svg>
+      </motion.svg>
+    </motion.div>
   )
 }
 
