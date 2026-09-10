@@ -127,16 +127,16 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <HeroSlideshow ready={ready} />
 
-        {/* scrims — keep every slide text-safe without flattening the shot */}
-        <div aria-hidden className="absolute inset-0 bg-espresso/45" />
-        {/* solid espresso cap for the first ~4% (the pill zone), then it
-            fades open — nothing bright can ever touch the very top edge */}
+        {/* owner spec — the photo stays bright, no flat overlay:
+            a radial pool lives ONLY behind the text block, and the bottom
+            third carries a scrim for the action row; the top of every
+            slide stays clean and undarkened */}
         <div
           aria-hidden
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgb(42,33,27) 0%, rgba(42,33,27,0.85) 4%, rgba(42,33,27,0.25) 26%, rgba(42,33,27,0.14) 46%, rgba(42,33,27,0.62) 100%)',
+              'radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 70%)',
           }}
         />
         <div
@@ -144,7 +144,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(60% 48% at 50% 46%, rgba(42,33,27,0.42), rgba(42,33,27,0) 82%)',
+              'linear-gradient(0deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.26) 16%, rgba(0,0,0,0) 34%)',
           }}
         />
 
@@ -157,7 +157,8 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
             initial={{ opacity: 0 }}
             animate={ready ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 0.8, delay: 0.42 }}
-            className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-mega text-cream/75"
+            className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-mega text-[#F5E9DC]/80"
+            style={{ textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.4)' }}
           >
             <span className="h-px w-6 bg-clay/80" aria-hidden />
             Marigold &amp; Clay · Season 04 — Rawalpindi
@@ -165,8 +166,8 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           </motion.p>
 
           <h1
-            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-cream sm:text-6xl lg:text-[4.6rem]"
-            style={{ textShadow: '0 2px 26px rgba(42,33,27,0.45)' }}
+            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-[#F5E9DC] sm:text-6xl lg:text-[4.6rem]"
+            style={{ textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.4)' }}
           >
             <MaskedLine delay={0.52} play={ready}>
               Dress like the
@@ -191,7 +192,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
             </button>
             <button
               onClick={() => goShop('sale')}
-              className="flex h-12 items-center gap-2 rounded-full bg-terracotta px-7 text-sm font-bold text-cream shadow-pop transition-all hover:bg-terracotta-dark active:scale-[0.98]"
+              className="flex h-12 items-center gap-2 rounded-full bg-terracotta px-7 text-sm font-bold text-cream shadow-[0_4px_20px_rgba(0,0,0,0.25)] transition-all hover:bg-terracotta-dark active:scale-[0.98]"
             >
               The Autumn Edit
             </button>
