@@ -99,7 +99,7 @@ function StitchedMark() {
 function MaskedTitle() {
   return (
     <motion.h1
-      className="flex flex-wrap justify-center font-display text-[11.5vw] font-medium leading-none tracking-tight text-cream sm:text-7xl lg:text-8xl"
+      className="flex flex-wrap justify-center font-display text-[9.5vw] font-medium leading-none tracking-tight text-cream sm:text-7xl lg:text-8xl"
       style={{ textShadow: '0 2px 8px rgba(60,20,5,.32), 0 0 1px rgba(60,20,5,.55)' }}
       variants={{ show: { transition: { staggerChildren: 0.075, delayChildren: 0.5 } } }}
       initial="hidden"
@@ -130,7 +130,10 @@ function MaskedTitle() {
 function CurtainArtwork({ reduce }: { reduce: boolean }) {
   return (
     <>
-      <div className="flex w-max flex-col items-center justify-center gap-7 [@media(max-height:640px)]:scale-[0.82] [@media(max-height:460px)]:scale-[0.68]">
+      {/* max-w keeps the lockup inside ≤320px screens: the masked title is a
+          single unbreakable run (nbsp-joined spans), so the column must be
+          allowed to shrink and the type sized to fit it */}
+      <div className="flex w-max max-w-[94vw] flex-col items-center justify-center gap-7 px-1 [@media(max-height:640px)]:scale-[0.82] [@media(max-height:460px)]:scale-[0.68]">
         <StitchedMark />
         <MaskedTitle />
 
@@ -155,7 +158,7 @@ function CurtainArtwork({ reduce }: { reduce: boolean }) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 2.15 }}
-          className="-mt-2 whitespace-nowrap text-[10px] font-bold uppercase tracking-mega text-cream/65"
+          className="-mt-2 max-w-full text-center text-[10px] font-bold uppercase tracking-mega text-cream/65"
         >
           Est · Curated Goods — Rawalpindi
         </motion.p>
@@ -371,9 +374,9 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
         </div>
       </Curtain>
 
-      {/* bottom tag */}
+      {/* bottom tag — wraps instead of overflowing on ≤320px screens */}
       <motion.p
-        className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold uppercase tracking-mega text-cream/40"
+        className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2 max-w-[92vw] text-center text-[10px] font-bold uppercase leading-relaxed tracking-mega text-cream/40"
         animate={phase >= 1 ? { opacity: 0 } : { opacity: 1 }}
         initial={{ opacity: 0 }}
         transition={{ duration: 0.4, delay: phase >= 1 ? 0 : 2.45 }}

@@ -10,6 +10,17 @@ html {
   background-color: #2a211b;
 }
 
+/* the page must never pan sideways — the intro's 1.055 entrance zoom and
+   any decorative overhang become paint-only. `clip` (not `hidden`) so no
+   scroll container is created and position:sticky keeps working; the
+   `hidden` line first is a fallback for browsers without clip support
+   (both target only the root scroller, so sticky is safe either way). */
+html,
+body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   @apply bg-cream font-sans text-[15px] leading-relaxed text-charcoal antialiased;
 }
