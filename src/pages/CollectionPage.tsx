@@ -414,7 +414,7 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
       </header>
 
       {/* ── mobile collection rail — brand tabs, jumps between pages ── */}
-      <div className="no-scrollbar sticky top-[4.25rem] z-30 flex gap-1 overflow-x-auto border-b border-line bg-cream/95 px-4 backdrop-blur-xl lg:hidden">
+      <div className="no-scrollbar sticky top-[4.75rem] z-30 flex gap-1 overflow-x-auto border-b border-line bg-cream/95 px-4 backdrop-blur-xl lg:hidden">
         {SIDEBAR_ORDER.map((v) => (
           <button
             key={v}
@@ -461,7 +461,7 @@ export default function CollectionPage({ view }: { view: CollectionView }) {
           {/* ── toolbar + product grid — search/sort stays pinned too ── */}
           <div className="min-w-0">
             {/* toolbar */}
-            <div className="z-20 -mx-4 border-line bg-cream/90 px-4 py-3 backdrop-blur-xl max-lg:sticky max-lg:top-[7.19rem] max-lg:border-b sm:mx-0 sm:rounded-[4px] sm:border sm:px-4 lg:sticky lg:top-[4.9rem]">
+            <div className="z-20 -mx-4 border-line bg-cream/90 px-4 py-3 backdrop-blur-xl max-lg:sticky max-lg:top-[7.69rem] max-lg:border-b sm:mx-0 sm:rounded-[4px] sm:border sm:px-4 lg:sticky lg:top-[4.9rem]">
               <div className="flex items-center gap-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[3px] bg-parchment/80 px-3.5 py-2">
                   <IconSearch className="h-4 w-4 shrink-0 text-taupe" />

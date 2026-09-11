@@ -81,25 +81,36 @@ function HeroSlideshow({ ready }: { ready: boolean }) {
     return () => window.clearInterval(t)
   }, [reduce, ready])
 
+  /* mount only a sliding window — the current slide, the next one (so it's
+   * decoding before its entrance) and the previous one (so the crossfade has
+   * something to dissolve from). Every slide is a full-viewport JPG; mounting
+   * all ~15 up front pulled megabytes nobody could see yet. */
+  const n = HERO_SLIDES.length
+
   return (
     <div aria-hidden className="absolute inset-0">
-      {HERO_SLIDES.map((slide, i) => (
-        <motion.div
-          key={slide.src}
-          className="absolute inset-0"
-          initial={false}
-          animate={{ opacity: i === idx ? 1 : 0 }}
-          transition={{ duration: SLIDE_FADE, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <img
-            src={slide.src}
-            alt=""
-            loading={i === 0 ? 'eager' : 'lazy'}
-            draggable={false}
-            className="h-full w-full object-cover object-center"
-          />
-        </motion.div>
-      ))}
+      {HERO_SLIDES.map((slide, i) => {
+        const inWindow = i === idx || i === (idx + 1) % n || (idx > 0 && i === idx - 1)
+        if (!inWindow) return <div key={slide.src} className="absolute inset-0" />
+        return (
+          <motion.div
+            key={slide.src}
+            className="absolute inset-0"
+            initial={false}
+            animate={{ opacity: i === idx ? 1 : 0 }}
+            transition={{ duration: SLIDE_FADE, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <img
+              src={slide.src}
+              alt=""
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              draggable={false}
+              className="h-full w-full object-cover object-center"
+            />
+          </motion.div>
+        )
+      })}
     </div>
   )
 }

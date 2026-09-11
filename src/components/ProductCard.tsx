@@ -60,6 +60,7 @@ export const ProductCard = forwardRef<HTMLElement, ProductCardProps>(function Pr
           src={p.image}
           alt={p.name}
           loading="lazy"
+          decoding="async"
           className="aspect-[4/5] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
         />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between">
