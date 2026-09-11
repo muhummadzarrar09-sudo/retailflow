@@ -124,11 +124,13 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
       id="top"
       /* pulled up under the floating header — the canvas reaches the very
          top of the document, so nothing pale peeks behind the pill.
-         Exactly one viewport tall and unpinned: content below follows
-         immediately in normal document flow. */
-      className="relative -mt-[4.25rem] h-[100svh] bg-espresso"
+         At least one viewport tall and unpinned: on short viewports
+         (foldable cover screens, split-pane landscape) the stage grows
+         with its content instead of clipping the CTAs, and content below
+         follows immediately in normal document flow. */
+      className="relative -mt-[4.25rem] bg-espresso"
     >
-      <div className="relative h-full overflow-hidden">
+      <div className="relative overflow-hidden">
         <HeroSlideshow ready={ready} />
 
         {/* owner spec — the photo stays bright, no flat overlay:
@@ -153,9 +155,13 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
         />
 
         {/* stage text — season slogan · headline · exactly two actions.
-            Entrance choreography only (plays once when the curtain lifts);
-            the block itself never reacts to scroll. */}
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center">
+            In flow with min-h-100svh (the stage's height-giver): centered
+            exactly as before when the viewport is tall enough, growing the
+            stage on short foldable/split screens so nothing clips.
+            Short-height variants densify the rhythm and push the block
+            below the floating nav zone. Entrance choreography only; the
+            block never reacts to scroll. */}
+        <div className="relative z-10 flex min-h-[100svh] flex-col items-center justify-center px-4 text-center [@media(max-height:560px)]:pb-12 [@media(max-height:560px)]:pt-[7.25rem]">
           <motion.p
             initial={{ opacity: 0 }}
             animate={ready ? { opacity: 1 } : { opacity: 0 }}
@@ -169,7 +175,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           </motion.p>
 
           <h1
-            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-[#F5E9DC] sm:text-6xl lg:text-[4.6rem]"
+            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-[#F5E9DC] sm:text-6xl lg:text-[4.6rem] [@media(max-height:560px)]:mt-4"
             style={{ textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.4)' }}
           >
             <MaskedLine delay={0.52} play={ready}>
@@ -184,7 +190,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
             initial={{ opacity: 0, y: 18 }}
             animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
             transition={{ duration: 0.8, delay: 0.95, ease }}
-            className="mt-9 flex flex-wrap items-center justify-center gap-3"
+            className="mt-9 flex flex-wrap items-center justify-center gap-3 [@media(max-height:560px)]:mt-5"
           >
             <button
               onClick={() => goShop('all')}
@@ -202,9 +208,10 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           </motion.div>
         </div>
 
-        {/* scroll cue — static within the stage, scrolls away with it */}
+        {/* scroll cue — static within the stage; hidden on short viewports
+            where the vertical budget belongs to the message */}
         <div
-          className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block"
+          className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block [@media(max-height:560px)]:hidden"
           aria-hidden
         >
           <motion.div
