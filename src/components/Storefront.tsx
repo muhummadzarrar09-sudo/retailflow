@@ -44,9 +44,9 @@ function MaskedLine({
 
 /* ── Campaign hero — the landing stage ───────────────────────────────
    A background slideshow of the new/featured picks woven with the
-   campaign stills, over solid espresso with text-safe scrims. The stage
-   is pinned: the headline and the two actions dissolve into the backdrop
-   on scroll, the show keeps running, then the store continues below. */
+   campaign stills, over solid espresso with text-safe scrims. A plain
+   100svh stage: no pinning, no scroll choreography — the hero scrolls
+   away like any other section and the text stays put. */
 
 const HERO_SLIDES: { src: string; alt: string }[] = (() => {
   const picks = products.filter((p) => p.isNew || p.featured)
@@ -81,25 +81,36 @@ function HeroSlideshow({ ready }: { ready: boolean }) {
     return () => window.clearInterval(t)
   }, [reduce, ready])
 
+  /* mount only a sliding window — the current slide, the next one (so it's
+   * decoding before its entrance) and the previous one (so the crossfade has
+   * something to dissolve from). Every slide is a full-viewport JPG; mounting
+   * all ~15 up front pulled megabytes nobody could see yet. */
+  const n = HERO_SLIDES.length
+
   return (
     <div aria-hidden className="absolute inset-0">
-      {HERO_SLIDES.map((slide, i) => (
-        <motion.div
-          key={slide.src}
-          className="absolute inset-0"
-          initial={false}
-          animate={{ opacity: i === idx ? 1 : 0 }}
-          transition={{ duration: SLIDE_FADE, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <img
-            src={slide.src}
-            alt=""
-            loading={i === 0 ? 'eager' : 'lazy'}
-            draggable={false}
-            className="h-full w-full object-cover object-center"
-          />
-        </motion.div>
-      ))}
+      {HERO_SLIDES.map((slide, i) => {
+        const inWindow = i === idx || i === (idx + 1) % n || (idx > 0 && i === idx - 1)
+        if (!inWindow) return <div key={slide.src} className="absolute inset-0" />
+        return (
+          <motion.div
+            key={slide.src}
+            className="absolute inset-0"
+            initial={false}
+            animate={{ opacity: i === idx ? 1 : 0 }}
+            transition={{ duration: SLIDE_FADE, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <img
+              src={slide.src}
+              alt=""
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              draggable={false}
+              className="h-full w-full object-cover object-center"
+            />
+          </motion.div>
+        )
+      })}
     </div>
   )
 }
@@ -107,24 +118,19 @@ function HeroSlideshow({ ready }: { ready: boolean }) {
 export function CampaignHero({ ready = true }: { ready?: boolean }) {
   const { goShop } = useStore()
   const reduce = useReducedMotion()
-  const ref = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
-
-  // the text dissolves into the backdrop first — blur, lift, fade
-  const textFade = useTransform(scrollYProgress, [0, 0.32], [1, 0])
-  const textLift = useTransform(scrollYProgress, [0, 0.36], ['0rem', '-3.5rem'])
-  const textBlur = useTransform(scrollYProgress, [0, 0.34], ['blur(0px)', 'blur(12px)'])
 
   return (
     <section
       id="top"
-      ref={ref}
       /* pulled up under the floating header — the canvas reaches the very
-         top of the document, so nothing pale peeks behind the pill */
-      className="relative -mt-[4.25rem] h-[calc(135svh+4.25rem)] bg-espresso"
+         top of the document, so nothing pale peeks behind the pill.
+         At least one viewport tall and unpinned: on short viewports
+         (foldable cover screens, split-pane landscape) the stage grows
+         with its content instead of clipping the CTAs, and content below
+         follows immediately in normal document flow. */
+      className="relative -mt-[4.25rem] bg-espresso"
     >
-      {/* pinned stage */}
-      <div className="sticky top-0 h-[100svh] overflow-hidden">
+      <div className="relative overflow-hidden">
         <HeroSlideshow ready={ready} />
 
         {/* owner spec — the photo stays bright, no flat overlay:
@@ -148,11 +154,14 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           }}
         />
 
-        {/* stage text — season slogan · headline · exactly two actions */}
-        <motion.div
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center"
-          style={{ opacity: textFade, y: textLift, filter: textBlur }}
-        >
+        {/* stage text — season slogan · headline · exactly two actions.
+            In flow with min-h-100svh (the stage's height-giver): centered
+            exactly as before when the viewport is tall enough, growing the
+            stage on short foldable/split screens so nothing clips.
+            Short-height variants densify the rhythm and push the block
+            below the floating nav zone. Entrance choreography only; the
+            block never reacts to scroll. */}
+        <div className="relative z-10 flex min-h-[100svh] flex-col items-center justify-center px-4 text-center [@media(max-height:560px)]:pb-12 [@media(max-height:560px)]:pt-[7.25rem]">
           <motion.p
             initial={{ opacity: 0 }}
             animate={ready ? { opacity: 1 } : { opacity: 0 }}
@@ -166,7 +175,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
           </motion.p>
 
           <h1
-            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-[#F5E9DC] sm:text-6xl lg:text-[4.6rem]"
+            className="mt-6 max-w-3xl font-display text-[12.5vw] font-medium leading-[1.02] tracking-tight text-[#F5E9DC] sm:text-6xl lg:text-[4.6rem] [@media(max-height:560px)]:mt-4"
             style={{ textShadow: '0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.4)' }}
           >
             <MaskedLine delay={0.52} play={ready}>
@@ -181,7 +190,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
             initial={{ opacity: 0, y: 18 }}
             animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
             transition={{ duration: 0.8, delay: 0.95, ease }}
-            className="mt-9 flex flex-wrap items-center justify-center gap-3"
+            className="mt-9 flex flex-wrap items-center justify-center gap-3 [@media(max-height:560px)]:mt-5"
           >
             <button
               onClick={() => goShop('all')}
@@ -197,12 +206,12 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
               The Autumn Edit
             </button>
           </motion.div>
-        </motion.div>
+        </div>
 
-        {/* scroll cue — exits with the text */}
-        <motion.div
-          className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block"
-          style={{ opacity: textFade }}
+        {/* scroll cue — static within the stage; hidden on short viewports
+            where the vertical budget belongs to the message */}
+        <div
+          className="absolute bottom-7 left-1/2 z-10 hidden -translate-x-1/2 sm:block [@media(max-height:560px)]:hidden"
           aria-hidden
         >
           <motion.div
@@ -218,7 +227,7 @@ export function CampaignHero({ ready = true }: { ready?: boolean }) {
               <IconChevronDown className="h-4 w-4" />
             </motion.span>
           </motion.div>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

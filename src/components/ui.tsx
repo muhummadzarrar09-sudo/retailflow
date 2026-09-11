@@ -258,29 +258,36 @@ export function ShopMark({ className = 'h-9 w-9' }: IconProps) {
 
 export function ShopLogo({
   dark = false,
+  responsive = false,
   href = '#top',
   onClick,
 }: {
   dark?: boolean
+  /** dark applies only from lg up (mobile always renders the light-bg tone) */
+  responsive?: boolean
   href?: string
   onClick?: React.MouseEventHandler<HTMLAnchorElement>
 }) {
+  const onDark = responsive ? false : dark
+  const darkAtLg = responsive && dark
   return (
     <a href={href} onClick={onClick} className="group flex items-center gap-3">
-      <ShopMark className="h-10 w-10 shrink-0 transition-transform duration-500 ease-out group-hover:-rotate-12" />
+      <ShopMark className="h-9 w-9 shrink-0 transition-transform duration-500 ease-out group-hover:-rotate-12 sm:h-10 sm:w-10" />
       <span className="leading-none">
         <span
           className={cn(
-            'font-display text-[1.35rem] font-semibold tracking-tight',
-            dark ? 'text-cream' : 'text-espresso',
+            'hidden whitespace-nowrap font-display text-[1.2rem] font-semibold tracking-tight min-[360px]:inline sm:text-[1.35rem]',
+            onDark ? 'text-cream' : 'text-espresso',
+            darkAtLg && 'lg:text-cream',
           )}
         >
           Marigold <span className="italic text-terracotta">&</span> Clay
         </span>
         <span
           className={cn(
-            'mt-1 block text-[9px] font-bold uppercase tracking-mega',
-            dark ? 'text-cream/45' : 'text-taupe',
+            'mt-1 hidden text-[9px] font-bold uppercase tracking-mega sm:block',
+            onDark ? 'text-cream/45' : 'text-taupe',
+            darkAtLg && 'lg:text-cream/45',
           )}
         >
           Curated General Store

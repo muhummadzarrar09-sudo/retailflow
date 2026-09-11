@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#FAF5EA" />
+    <meta name="theme-color" content="#1F1712" />
     <title>Marigold &amp; Clay — Curated General Store</title>
     <meta
       name="description"
@@ -48,7 +48,10 @@
     <link rel="icon" type="image/png" href="/brand/favicon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
     <link rel="apple-touch-icon" href="/brand/favicon-192.png" />
-    <link rel="preload" as="image" href="/products/campaign-hero.jpg" fetchpriority="high" />
+    <!-- LCP preload must name the FIRST hero slide (the first new/featured
+         product), not a later campaign still — otherwise the browser
+         fetches the wrong image high-priority and the real LCP waits -->
+    <link rel="preload" as="image" href="/products/classic-linen-kurta.jpg" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
