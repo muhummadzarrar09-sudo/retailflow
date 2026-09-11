@@ -211,7 +211,7 @@ export default function Nav() {
   useFocusTrap(menuRef, menuOpen)
   const { count, setCartOpen, view, goShop, queueSearchFocus } = useStore()
 
-  /* while the pinned dark hero stage is behind the nav, the pill switches to
+  /* while the espresso hero stage is behind the nav, the pill switches to
      dark glass — the cream pill would read as a white block on the espresso
      canvas. Below the hero it's the warm cream glass again. */
   useEffect(() => {
